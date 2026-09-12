@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Reservas Deportivas Villaguay",
+    "slug": "reservas-deportivas-villaguay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "reservasvillaguay",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ar.gob.villaguay.reservasdeportivas",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Permite escanear el código QR del turno en la entrada del complejo deportivo.",
+        "NSLocationWhenInUseUsageDescription": "Permite ubicar los complejos deportivos en el mapa y calcular la distancia.",
+        "NSFaceIDUsageDescription": "Permite a los encargados validar su identidad antes de controlar los ingresos."
+      }
+    },
+    "android": {
+      "package": "ar.gob.villaguay.reservasdeportivas",
+      "adaptiveIcon": {
+        "backgroundColor": "#1A4D2E",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permite escanear el código QR del turno en la entrada del complejo deportivo."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite ubicar los complejos deportivos en el mapa y calcular la distancia."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite a los encargados validar su identidad antes de controlar los ingresos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2E7D32"
+        }
+      ]
+    ]
+  }
+}

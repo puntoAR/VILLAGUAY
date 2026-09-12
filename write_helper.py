@@ -1,0 +1,1 @@
+import sys, base64, pathlib\np = pathlib.Path(sys.argv[1])\np.parent.mkdir(parents=True, exist_ok=True)\np.write_bytes(base64.b64decode(sys.argv[2]))\nprint(" Wrote: \ + sys.argv[1])
