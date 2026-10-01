@@ -8,18 +8,31 @@ export const USUARIOS_MOCK: Usuario[] = [
     telefono: '3455-401122',
     rol: 'jugador',
     espaciosFavoritos: ['esp-02', 'esp-08'],
-    cancelacionesTardias: 1,
-    ausencias: 0
+    cancelacionesTardias: 0,
+    ausencias: 0,
+    password: '123456',
+  },
+  {
+    id: 'usr-lucia',
+    nombre: 'Lucía Benítez',
+    email: 'lucia@mail.com',
+    telefono: '3455-667788',
+    rol: 'jugador',
+    espaciosFavoritos: ['esp-04', 'esp-05'],
+    cancelacionesTardias: 2,
+    ausencias: 1,
+    password: '123456',
   },
   {
     id: 'usr-marcelo',
-    nombre: 'Marcelo (Encargado Polideportivo)',
+    nombre: 'Marcelo Quintana (Encargado)',
     email: 'marcelo@villaguay.gob.ar',
     telefono: '3455-554433',
     rol: 'encargado',
     espaciosFavoritos: [],
     cancelacionesTardias: 0,
-    ausencias: 0
+    ausencias: 0,
+    password: '123456',
   },
   {
     id: 'usr-nahuel',
@@ -29,6 +42,7 @@ export const USUARIOS_MOCK: Usuario[] = [
     rol: 'administrador',
     espaciosFavoritos: ['esp-01', 'esp-03'],
     cancelacionesTardias: 0,
-    ausencias: 0
-  }
+    ausencias: 0,
+    password: '123456',
+  },
 ];

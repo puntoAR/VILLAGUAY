@@ -27,7 +27,7 @@ export default function PantallaPerfil() {
         style: 'destructive',
         onPress: async () => {
           await cerrarSesion();
-          router.replace('/(tabs)');
+          Alert.alert('Sesión cerrada', 'Has cerrado sesión correctamente.');
         },
       },
     ]);
@@ -35,58 +35,87 @@ export default function PantallaPerfil() {
 
   return (
     <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      {/* Tarjeta de Usuario */}
-      <View style={[styles.tarjetaUsuario, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-        <View style={styles.avatar}>
-          <Icono nombre="person" size={36} color="#FFFFFF" />
-        </View>
+      {/* Tarjeta de Usuario o Tarjeta de Invitado */}
+      {usuario ? (
+        <View style={[styles.tarjetaUsuario, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <View style={styles.avatar}>
+            <Icono nombre="person" size={36} color="#FFFFFF" />
+          </View>
 
-        <View style={styles.infoUsuario}>
-          <Text style={[styles.nombre, { color: colores.texto }]}>
-            {usuario?.nombre || 'Usuario Invitado'}
-          </Text>
-          <Text style={[styles.email, { color: colores.textoSecundario }]}>
-            {usuario?.email || 'Sin sesión iniciada'}
-          </Text>
-          <View style={styles.filaRol}>
-            <View style={[styles.badgeRol, { backgroundColor: Colores.acento }]}>
-              <Text style={styles.badgeRolTexto}>ROL: {usuario?.rol.toUpperCase()}</Text>
+          <View style={styles.infoUsuario}>
+            <Text style={[styles.nombre, { color: colores.texto }]}>
+              {usuario.nombre}
+            </Text>
+            <Text style={[styles.email, { color: colores.textoSecundario }]}>
+              {usuario.email}
+            </Text>
+            {usuario.telefono && (
+              <Text style={[styles.telefono, { color: colores.textoMuted }]}>
+                📞 {usuario.telefono}
+              </Text>
+            )}
+            <View style={styles.filaRol}>
+              <View style={[styles.badgeRol, { backgroundColor: Colores.acento }]}>
+                <Text style={styles.badgeRolTexto}>ROL: {usuario.rol.toUpperCase()}</Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
-
-      {/* Métricas de Comportamiento (PRD Nahuel: cancelaciones tardías y ausencias) */}
-      <View style={styles.seccion}>
-        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Historial de Cumplimiento</Text>
-        <View style={styles.filaMetricas}>
-          <View style={[styles.tarjetaMetrica, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-            <Icono nombre="alert-circle-outline" size={24} color={Colores.advertencia} />
-            <Text style={[styles.metricaValor, { color: colores.texto }]}>
-              {usuario?.cancelacionesTardias ?? 0}
-            </Text>
-            <Text style={[styles.metricaEtiqueta, { color: colores.textoSecundario }]}>
-              Cancelaciones Tardías
-            </Text>
-            <Text style={[styles.metricaAviso, { color: colores.textoMuted }]}>
-              (Menos de 4 hs antes)
-            </Text>
+      ) : (
+        <View style={[styles.tarjetaInvitado, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <View style={styles.avatarInvitado}>
+            <Icono nombre="person-outline" size={32} color={colores.textoMuted} />
           </View>
-
-          <View style={[styles.tarjetaMetrica, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-            <Icono nombre="close-circle-outline" size={24} color={Colores.peligro} />
-            <Text style={[styles.metricaValor, { color: colores.texto }]}>
-              {usuario?.ausencias ?? 0}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.nombre, { color: colores.texto }]}>Modo Invitado</Text>
+            <Text style={[styles.email, { color: colores.textoSecundario }]}>
+              Iniciá sesión o registrate para gestionar tus turnos y acceder al control de ingreso.
             </Text>
-            <Text style={[styles.metricaEtiqueta, { color: colores.textoSecundario }]}>
-              Ausencias (No-Show)
-            </Text>
-            <Text style={[styles.metricaAviso, { color: colores.textoMuted }]}>
-              (Marcadas en puerta)
-            </Text>
+            <TouchableOpacity
+              style={[styles.botonIniciarInvitado, { backgroundColor: Colores.primarioClaro }]}
+              onPress={() => router.push('/login')}
+              activeOpacity={0.8}
+            >
+              <Icono nombre="log-in-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.botonIniciarInvitadoTexto}>Iniciar Sesión o Crear Cuenta</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      )}
+
+      {/* Métricas de Comportamiento (PRD Nahuel: cancelaciones tardías y ausencias) */}
+      {usuario && (
+        <View style={styles.seccion}>
+          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Historial de Cumplimiento</Text>
+          <View style={styles.filaMetricas}>
+            <View style={[styles.tarjetaMetrica, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+              <Icono nombre="alert-circle-outline" size={24} color={Colores.advertencia} />
+              <Text style={[styles.metricaValor, { color: colores.texto }]}>
+                {usuario.cancelacionesTardias ?? 0}
+              </Text>
+              <Text style={[styles.metricaEtiqueta, { color: colores.textoSecundario }]}>
+                Cancelaciones Tardías
+              </Text>
+              <Text style={[styles.metricaAviso, { color: colores.textoMuted }]}>
+                (Menos de 4 hs antes)
+              </Text>
+            </View>
+
+            <View style={[styles.tarjetaMetrica, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+              <Icono nombre="close-circle-outline" size={24} color={Colores.peligro} />
+              <Text style={[styles.metricaValor, { color: colores.texto }]}>
+                {usuario.ausencias ?? 0}
+              </Text>
+              <Text style={[styles.metricaEtiqueta, { color: colores.textoSecundario }]}>
+                Ausencias (No-Show)
+              </Text>
+              <Text style={[styles.metricaAviso, { color: colores.textoMuted }]}>
+                (Marcadas en puerta)
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Selector de Rol para Defensa Oral y Pruebas Cátedra */}
       <View style={styles.seccion}>
@@ -94,14 +123,14 @@ export default function PantallaPerfil() {
           Selector Rápido de Cuenta (Defensa Oral)
         </Text>
         <Text style={[styles.seccionSubtitulo, { color: colores.textoSecundario }]}>
-          Permite simular la experiencia completa de los tres perfiles del PRD:
+          Permite simular la experiencia completa de los perfiles del PRD:
         </Text>
 
         <TouchableOpacity
           style={[
             styles.opcionRol,
             {
-              backgroundColor: usuario?.rol === 'jugador' ? Colores.primarioClaro : colores.tarjeta,
+              backgroundColor: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? Colores.primarioClaro : colores.tarjeta,
               borderColor: colores.borde,
             },
           ]}
@@ -110,21 +139,21 @@ export default function PantallaPerfil() {
           <Icono
             nombre="football-outline"
             size={20}
-            color={usuario?.rol === 'jugador' ? '#FFFFFF' : colores.texto}
+            color={usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#FFFFFF' : colores.texto}
           />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text
               style={[
                 styles.opcionRolNombre,
-                { color: usuario?.rol === 'jugador' ? '#FFFFFF' : colores.texto },
+                { color: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#FFFFFF' : colores.texto },
               ]}
             >
-              Emiliano Ruiz (Jugador)
+              Emiliano Ruiz (Jugador Regular)
             </Text>
             <Text
               style={[
                 styles.opcionRolDesc,
-                { color: usuario?.rol === 'jugador' ? '#DCFCE7' : colores.textoSecundario },
+                { color: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#DCFCE7' : colores.textoSecundario },
               ]}
             >
               Reserva turnos, consulta disponibilidad, muestra código QR.
@@ -154,7 +183,7 @@ export default function PantallaPerfil() {
                 { color: usuario?.rol === 'encargado' ? '#FFFFFF' : colores.texto },
               ]}
             >
-              Marcelo (Encargado de Cancha)
+              Marcelo Quintana (Encargado de Cancha)
             </Text>
             <Text
               style={[
@@ -227,12 +256,22 @@ export default function PantallaPerfil() {
         </View>
       </View>
 
-      {/* Botón Cerrar Sesión */}
+      {/* Botón Cerrar Sesión o Iniciar Sesión */}
       <View style={{ padding: 16, marginBottom: 30 }}>
-        <TouchableOpacity style={styles.botonCerrarSesion} onPress={handleCerrarSesion}>
-          <Icono nombre="log-out-outline" size={18} color={Colores.peligro} style={{ marginRight: 6 }} />
-          <Text style={styles.botonCerrarSesionTexto}>Cerrar Sesión</Text>
-        </TouchableOpacity>
+        {usuario ? (
+          <TouchableOpacity style={styles.botonCerrarSesion} onPress={handleCerrarSesion}>
+            <Icono nombre="log-out-outline" size={18} color={Colores.peligro} style={{ marginRight: 6 }} />
+            <Text style={styles.botonCerrarSesionTexto}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.botonCerrarSesion, { borderColor: Colores.primarioClaro, backgroundColor: Colores.primarioClaro }]}
+            onPress={() => router.push('/login')}
+          >
+            <Icono nombre="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={[styles.botonCerrarSesionTexto, { color: '#FFFFFF' }]}>Iniciar Sesión / Crear Cuenta</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
@@ -251,11 +290,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
   },
+  tarjetaInvitado: {
+    flexDirection: 'row',
+    padding: 16,
+    margin: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 14,
+    alignItems: 'center',
+  },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: Colores.primarioClaro,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInvitado: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -269,6 +325,26 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 13,
     marginTop: 2,
+    lineHeight: 18,
+  },
+  telefono: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  botonIniciarInvitado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginTop: 10,
+    gap: 6,
+  },
+  botonIniciarInvitadoTexto: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
   filaRol: {
     flexDirection: 'row',

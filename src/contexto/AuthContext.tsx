@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Usuario, Rol } from '../tipos';
+import { Usuario, Rol, DatosRegistro } from '../tipos';
 import { AuthServicio } from '../servicios/auth';
 import { USUARIOS_MOCK } from '../mocks/usuarios';
+import { esError } from '../servicios/api';
 
 interface AuthContextType {
   usuario: Usuario | null;
   autenticado: boolean;
   cargando: boolean;
-  iniciarSesion: (email: string) => Promise<boolean>;
+  soportaBiometria: boolean;
+  iniciarSesion: (email: string, password?: string) => Promise<{ exito: boolean; mensajeError?: string }>;
+  registrar: (datos: DatosRegistro) => Promise<{ exito: boolean; mensajeError?: string }>;
   cerrarSesion: () => Promise<void>;
+  reingresoBiometrico: () => Promise<boolean>;
   cambiarRolDemo: (rol: Rol) => Promise<void>;
   alternarFavorito: (espacioId: string) => Promise<void>;
   esEncargadoOAdmin: boolean;
@@ -18,8 +22,11 @@ const AuthContext = createContext<AuthContextType>({
   usuario: null,
   autenticado: false,
   cargando: true,
-  iniciarSesion: async () => false,
+  soportaBiometria: false,
+  iniciarSesion: async () => ({ exito: false }),
+  registrar: async () => ({ exito: false }),
   cerrarSesion: async () => {},
+  reingresoBiometrico: async () => false,
   cambiarRolDemo: async () => {},
   alternarFavorito: async () => {},
   esEncargadoOAdmin: false,
@@ -28,33 +35,53 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [soportaBiometria, setSoportaBiometria] = useState(false);
 
   useEffect(() => {
-    AuthServicio.obtenerUsuarioActivo().then(u => {
-      setUsuario(u);
+    const inicializar = async () => {
+      const activo = await AuthServicio.obtenerUsuarioActivo();
+      setUsuario(activo);
+      const bio = await AuthServicio.soporteBiometria();
+      setSoportaBiometria(bio);
       setCargando(false);
-    });
+    };
+
+    inicializar();
   }, []);
 
-  const iniciarSesion = async (email: string): Promise<boolean> => {
-    const u = USUARIOS_MOCK.find(x => x.email.toLowerCase() === email.toLowerCase()) || {
-      id: `usr-${Date.now()}`,
-      nombre: email.split('@')[0],
-      email,
-      telefono: '3455-000000',
-      rol: 'jugador' as Rol,
-      espaciosFavoritos: [],
-      cancelacionesTardias: 0,
-      ausencias: 0,
-    };
-    await AuthServicio.guardarUsuarioActivo(u);
-    setUsuario(u);
-    return true;
+  const iniciarSesion = async (
+    email: string,
+    password?: string
+  ): Promise<{ exito: boolean; mensajeError?: string }> => {
+    const respuesta = await AuthServicio.iniciarSesion(email, password);
+    if (esError(respuesta)) {
+      return { exito: false, mensajeError: respuesta.error.mensaje };
+    }
+    setUsuario(respuesta.datos.usuario);
+    return { exito: true };
+  };
+
+  const registrar = async (
+    datos: DatosRegistro
+  ): Promise<{ exito: boolean; mensajeError?: string }> => {
+    const respuesta = await AuthServicio.registrarUsuario(datos);
+    if (esError(respuesta)) {
+      return { exito: false, mensajeError: respuesta.error.mensaje };
+    }
+    setUsuario(respuesta.datos.usuario);
+    return { exito: true };
   };
 
   const cerrarSesion = async () => {
     await AuthServicio.cerrarSesion();
     setUsuario(null);
+  };
+
+  const reingresoBiometrico = async (): Promise<boolean> => {
+    const res = await AuthServicio.autenticarConBiometria(
+      'Verificá tu identidad para reingresar al sistema'
+    );
+    return res.exito;
   };
 
   const cambiarRolDemo = async (rol: Rol) => {
@@ -81,8 +108,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         usuario,
         autenticado: Boolean(usuario),
         cargando,
+        soportaBiometria,
         iniciarSesion,
+        registrar,
         cerrarSesion,
+        reingresoBiometrico,
         cambiarRolDemo,
         alternarFavorito,
         esEncargadoOAdmin,

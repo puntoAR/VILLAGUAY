@@ -108,6 +108,20 @@ export default function PantallaMisReservas() {
     return <EstadoCarga mensaje="Cargando tus reservas..." />;
   }
 
+  if (!usuario) {
+    return (
+      <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+        <EstadoVacio
+          icono="person-circle-outline"
+          titulo="Iniciá sesión para ver tus reservas"
+          subtitulo="Para consultar tus turnos agendados y presentar tu código QR de acceso en la puerta, por favor ingresá con tu cuenta."
+          accionTexto="Iniciar Sesión o Crear Cuenta"
+          onAccion={() => router.push('/login')}
+        />
+      </View>
+    );
+  }
+
   if (error) {
     return <EstadoError mensaje={error} onReintentar={cargarReservas} />;
   }

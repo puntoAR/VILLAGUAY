@@ -96,6 +96,20 @@ export default function PantallaGrilla() {
   };
 
   const abrirModalReserva = (turno: Turno) => {
+    if (!usuario) {
+      Alert.alert(
+        'Iniciar Sesión Requerido',
+        'Podés consultar la disponibilidad libremente, pero para confirmar un turno debés ingresar con tu cuenta o registrarte.',
+        [
+          { text: 'Seguir mirando', style: 'cancel' },
+          {
+            text: 'Iniciar Sesión / Registrarme',
+            onPress: () => router.push('/login'),
+          },
+        ]
+      );
+      return;
+    }
     setTurnoSeleccionado(turno);
     setCantidadPersonas(Math.min(2, espacio?.capacidad || 10));
     setMostrarModal(true);

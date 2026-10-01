@@ -7,6 +7,9 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTema } from '../src/contexto/ThemeContext';
@@ -16,177 +19,502 @@ import { Usuario } from '../src/tipos';
 import { Icono } from '../src/componentes/Icono';
 import { Colores } from '../src/constantes/tema';
 import { Haptica } from '../src/servicios/haptica';
+import { AuthServicio } from '../src/servicios/auth';
 
 export default function PantallaLogin() {
   const router = useRouter();
   const { colores } = useTema();
-  const { usuario, iniciarSesion, cambiarRolDemo } = useAuth();
+  const {
+    usuario,
+    iniciarSesion,
+    registrar,
+    reingresoBiometrico,
+    cambiarRolDemo,
+    soportaBiometria,
+  } = useAuth();
 
-  const [emailInput, setEmailInput] = useState<string>('');
+  // Control de pestaña: 'login' | 'registro'
+  const [pestaña, setPestaña] = useState<'login' | 'registro'>('login');
 
+  // Formulario Login
+  const [emailLogin, setEmailLogin] = useState<string>('');
+  const [passwordLogin, setPasswordLogin] = useState<string>('');
+  const [verPasswordLogin, setVerPasswordLogin] = useState<boolean>(false);
+  const [cargandoLogin, setCargandoLogin] = useState<boolean>(false);
+
+  // Formulario Registro
+  const [nombreReg, setNombreReg] = useState<string>('');
+  const [emailReg, setEmailReg] = useState<string>('');
+  const [telefonoReg, setTelefonoReg] = useState<string>('3455-');
+  const [passwordReg, setPasswordReg] = useState<string>('');
+  const [passwordConfirmReg, setPasswordConfirmReg] = useState<string>('');
+  const [verPasswordReg, setVerPasswordReg] = useState<boolean>(false);
+  const [cargandoReg, setCargandoReg] = useState<boolean>(false);
+
+  // Ejecutar login con credenciales
+  const manejarLogin = async () => {
+    if (!emailLogin.trim()) {
+      Alert.alert('Datos requeridos', 'Por favor ingresá tu correo electrónico.');
+      return;
+    }
+
+    setCargandoLogin(true);
+    const resultado = await iniciarSesion(emailLogin.trim(), passwordLogin.trim());
+    setCargandoLogin(false);
+
+    if (!resultado.exito) {
+      await Haptica.errorIngreso();
+      Alert.alert('No se pudo ingresar', resultado.mensajeError || 'Credenciales inválidas.');
+      return;
+    }
+
+    await Haptica.confirmacion();
+    router.back();
+  };
+
+  // Ejecutar registro de nuevo usuario
+  const manejarRegistro = async () => {
+    if (!nombreReg.trim() || nombreReg.trim().length < 3) {
+      Alert.alert('Nombre requerido', 'Por favor ingresá tu nombre y apellido completo.');
+      return;
+    }
+
+    if (!emailReg.trim() || !emailReg.includes('@')) {
+      Alert.alert('Email inválido', 'Por favor ingresá una dirección de correo válida.');
+      return;
+    }
+
+    if (!telefonoReg.trim() || telefonoReg.trim().length < 8) {
+      Alert.alert('Teléfono requerido', 'Ingresá tu número de teléfono de contacto en Villaguay.');
+      return;
+    }
+
+    if (passwordReg.length < 6) {
+      Alert.alert('Contraseña corta', 'La contraseña debe contener al menos 6 caracteres.');
+      return;
+    }
+
+    if (passwordReg !== passwordConfirmReg) {
+      Alert.alert('Contraseñas no coinciden', 'Las contraseñas ingresadas no son iguales.');
+      return;
+    }
+
+    setCargandoReg(true);
+    const resultado = await registrar({
+      nombre: nombreReg.trim(),
+      email: emailReg.trim(),
+      telefono: telefonoReg.trim(),
+      password: passwordReg,
+    });
+    setCargandoReg(false);
+
+    if (!resultado.exito) {
+      await Haptica.errorIngreso();
+      Alert.alert('Error en registro', resultado.mensajeError || 'No se pudo crear la cuenta.');
+      return;
+    }
+
+    await Haptica.confirmacion();
+    Alert.alert(
+      '¡Bienvenido a Deportes Villaguay! 🏆',
+      'Tu cuenta fue creada exitosamente. Ya podés reservar tus canchas favoritas.',
+      [{ text: 'Comenzar a reservar', onPress: () => router.back() }]
+    );
+  };
+
+  // Desbloqueo rápido biométrico
+  const manejarBiometria = async () => {
+    await Haptica.seleccionSuave();
+    const exito = await reingresoBiometrico();
+    if (exito) {
+      await Haptica.confirmacion();
+      router.back();
+    } else {
+      await Haptica.errorIngreso();
+      Alert.alert(
+        'Verificación biométrica',
+        'No se pudo verificar tu huella o rostro. Podés ingresar con tu correo y contraseña.'
+      );
+    }
+  };
+
+  // Recuperar contraseña
+  const manejarRecuperarClave = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          'Recuperar Contraseña',
+          'Ingresá tu correo para recibir el enlace de restablecimiento:',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Enviar',
+              onPress: async (email?: string) => {
+                if (!email) return;
+                const resp = await AuthServicio.recuperarPassword(email);
+                if (resp && 'datos' in resp) {
+                  Alert.alert('Correo enviado', resp.datos);
+                }
+              },
+            },
+          ],
+          'plain-text',
+          emailLogin
+        )
+      : Alert.alert(
+          'Recuperar Contraseña',
+          `Se enviará un enlace de restablecimiento a ${emailLogin || 'tu correo registrado'}. Revisá tu bandeja de entrada.`,
+          [{ text: 'Entendido' }]
+        );
+  };
+
+  // Selector rápido de demostración oral para la mesa de examen
   const seleccionarUsuarioDemo = async (u: Usuario) => {
     await Haptica.seleccionSuave();
     await cambiarRolDemo(u.rol);
     router.back();
   };
 
-  const ingresarConEmail = async () => {
-    if (!emailInput.trim() || !emailInput.includes('@')) {
-      Alert.alert('Email inválido', 'Por favor ingresá un correo electrónico válido.');
-      return;
-    }
-    await Haptica.confirmacion();
-    await iniciarSesion(emailInput.trim());
-    router.back();
-  };
-
   return (
-    <ScrollView
-      style={[styles.contenedor, { backgroundColor: colores.fondo }]}
-      contentContainerStyle={styles.contenido}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.encabezado}>
-        <View style={styles.logoContenedor}>
-          <Icono nombre="football-outline" size={40} color={Colores.primarioClaro} />
+      <ScrollView
+        style={[styles.contenedor, { backgroundColor: colores.fondo }]}
+        contentContainerStyle={styles.contenido}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Cabecera institucional */}
+        <View style={styles.encabezado}>
+          <View style={styles.logoContenedor}>
+            <Icono nombre="football-outline" size={38} color={Colores.primarioClaro} />
+          </View>
+          <Text style={[styles.titulo, { color: colores.texto }]}>
+            Dirección de Deportes Villaguay
+          </Text>
+          <Text style={[styles.subtitulo, { color: colores.textoSecundario }]}>
+            Portal Municipal de Reservas y Gestión Deportiva
+          </Text>
         </View>
-        <Text style={[styles.titulo, { color: colores.texto }]}>
-          Identificación de Usuario
-        </Text>
-        <Text style={[styles.subtitulo, { color: colores.textoSecundario }]}>
-          Seleccioná un perfil demo para evaluar los distintos roles de la cátedra o ingresá con tu correo.
-        </Text>
-      </View>
 
-      {/* Selector Rápido de Perfiles Demo Cátedra */}
-      <View style={styles.seccionDemo}>
-        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>
-          PERFILES PARA EVALUACIÓN ORAL:
-        </Text>
-
-        {USUARIOS_MOCK.map(u => {
-          const esActivo = usuario?.id === u.id;
-          let rolColor = Colores.primarioClaro;
-          let rolEtiqueta = 'Jugador';
-
-          if (u.rol === 'encargado') {
-            rolColor = Colores.secundario;
-            rolEtiqueta = 'Encargado de Predio';
-          } else if (u.rol === 'administrador') {
-            rolColor = '#6366F1';
-            rolEtiqueta = 'Dirección de Deportes';
-          }
-
-          return (
-            <TouchableOpacity
-              key={u.id}
-              style={[
-                styles.tarjetaUsuario,
-                {
-                  backgroundColor: colores.tarjeta,
-                  borderColor: esActivo ? Colores.primarioClaro : colores.borde,
-                  borderWidth: esActivo ? 2 : 1,
-                },
-              ]}
-              onPress={() => seleccionarUsuarioDemo(u)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.avatar,
-                  { backgroundColor: esActivo ? Colores.primarioClaro : colores.fondo },
-                ]}
-              >
-                <Icono
-                  nombre={
-                    u.rol === 'administrador'
-                      ? 'shield-checkmark'
-                      : u.rol === 'encargado'
-                      ? 'qr-code'
-                      : 'person'
-                  }
-                  size={22}
-                  color={esActivo ? '#FFFFFF' : Colores.primarioClaro}
-                />
-              </View>
-
-              <View style={styles.infoUsuario}>
-                <View style={styles.filaNombreRol}>
-                  <Text style={[styles.nombreUsuario, { color: colores.texto }]}>
-                    {u.nombre}
-                  </Text>
-                  <View style={[styles.badgeRol, { backgroundColor: rolColor + '20' }]}>
-                    <Text style={[styles.badgeRolTexto, { color: rolColor }]}>
-                      {rolEtiqueta}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.emailUsuario, { color: colores.textoSecundario }]}>
-                  {u.email}
-                </Text>
-
-                <View style={styles.detallesUsuario}>
-                  {u.cancelacionesTardias > 0 && (
-                    <Text style={[styles.alertaPenalizacion, { color: Colores.advertencia }]}>
-                      ⚠️ {u.cancelacionesTardias} canc. tardías
-                    </Text>
-                  )}
-                  {u.rol === 'encargado' && (
-                    <Text style={[styles.descripcionPermiso, { color: colores.textoMuted }]}>
-                      Habilitado para escanear QR y bloquear por lluvia
-                    </Text>
-                  )}
-                  {u.rol === 'administrador' && (
-                    <Text style={[styles.descripcionPermiso, { color: colores.textoMuted }]}>
-                      Habilitado para fijar turnos y actualizar aranceles
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              {esActivo && (
-                <View style={styles.iconoActivo}>
-                  <Icono nombre="checkmark-circle" size={24} color={Colores.primarioClaro} />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Ingreso Personalizado alternativo */}
-      <View style={[styles.seccionCustom, { borderTopColor: colores.borde }]}>
-        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>
-          O INGRESÁ CON OTRO CORREO:
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <TextInput
+        {/* Selector de pestañas: Iniciar Sesión / Crear Cuenta */}
+        <View style={[styles.selectorPestañas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <TouchableOpacity
             style={[
-              styles.inputEmail,
-              {
-                backgroundColor: colores.tarjeta,
-                borderColor: colores.borde,
-                color: colores.texto,
-              },
+              styles.pestañaBoton,
+              pestaña === 'login' && { backgroundColor: Colores.primarioClaro },
             ]}
-            placeholder="ejemplo@deportesvillaguay.com"
-            placeholderTextColor={colores.textoMuted}
-            value={emailInput}
-            onChangeText={setEmailInput}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            onPress={() => setPestaña('login')}
+            activeOpacity={0.8}
+          >
+            <Icono
+              nombre="log-in-outline"
+              size={18}
+              color={pestaña === 'login' ? '#FFFFFF' : colores.textoSecundario}
+            />
+            <Text
+              style={[
+                styles.pestañaTexto,
+                { color: pestaña === 'login' ? '#FFFFFF' : colores.textoSecundario },
+              ]}
+            >
+              Iniciar Sesión
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.botonIngresar, { backgroundColor: Colores.primarioClaro }]}
-            onPress={ingresarConEmail}
+            style={[
+              styles.pestañaBoton,
+              pestaña === 'registro' && { backgroundColor: Colores.primarioClaro },
+            ]}
+            onPress={() => setPestaña('registro')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.botonIngresarTexto}>Ingresar</Text>
+            <Icono
+              nombre="person-add-outline"
+              size={18}
+              color={pestaña === 'registro' ? '#FFFFFF' : colores.textoSecundario}
+            />
+            <Text
+              style={[
+                styles.pestañaTexto,
+                { color: pestaña === 'registro' ? '#FFFFFF' : colores.textoSecundario },
+              ]}
+            >
+              Crear Cuenta
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* ---------------- PESTAÑA: INICIAR SESIÓN ---------------- */}
+        {pestaña === 'login' ? (
+          <View style={styles.bloqueFormulario}>
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Correo electrónico</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="mail-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="ejemplo@deportesvillaguay.com"
+                  placeholderTextColor={colores.textoMuted}
+                  value={emailLogin}
+                  onChangeText={setEmailLogin}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.grupoCampo}>
+              <View style={styles.filaLabelRecuperar}>
+                <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Contraseña</Text>
+                <TouchableOpacity onPress={manejarRecuperarClave}>
+                  <Text style={[styles.enlaceRecuperar, { color: Colores.primarioClaro }]}>
+                    ¿Olvidaste tu contraseña?
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="lock-closed-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="Tu contraseña (ej: 123456)"
+                  placeholderTextColor={colores.textoMuted}
+                  value={passwordLogin}
+                  onChangeText={setPasswordLogin}
+                  secureTextEntry={!verPasswordLogin}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setVerPasswordLogin(prev => !prev)}>
+                  <Icono
+                    nombre={verPasswordLogin ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colores.textoMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Botón principal de login */}
+            <TouchableOpacity
+              style={[styles.botonPrincipal, { backgroundColor: Colores.primarioClaro }]}
+              onPress={manejarLogin}
+              disabled={cargandoLogin}
+              activeOpacity={0.8}
+            >
+              {cargandoLogin ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icono nombre="enter-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.botonPrincipalTexto}>Ingresar a mi cuenta</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Botón de acceso biométrico (Huella / Face ID) */}
+            {soportaBiometria && (
+              <TouchableOpacity
+                style={[styles.botonBiometria, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}
+                onPress={manejarBiometria}
+                activeOpacity={0.8}
+              >
+                <Icono nombre="finger-print-outline" size={22} color={Colores.primarioClaro} />
+                <Text style={[styles.botonBiometriaTexto, { color: colores.texto }]}>
+                  Ingresar con Huella o Face ID
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Acceso Rápido para Tribunal Examinador (Evaluación Oral) */}
+            <View style={[styles.seccionEvaluacion, { borderTopColor: colores.borde }]}>
+              <View style={styles.cabeceraEvaluacion}>
+                <Icono nombre="school-outline" size={18} color={Colores.secundario} />
+                <Text style={[styles.tituloEvaluacion, { color: colores.texto }]}>
+                  ACCESO RÁPIDO PARA DEFENSA DE CÁTEDRA:
+                </Text>
+              </View>
+              <Text style={[styles.descEvaluacion, { color: colores.textoSecundario }]}>
+                Seleccioná uno de los 4 perfiles oficiales del PRD con 1 toque:
+              </Text>
+
+              <View style={styles.grillaPerfiles}>
+                {USUARIOS_MOCK.map(u => {
+                  const esActivo = usuario?.id === u.id;
+                  let badgeColor = Colores.primarioClaro;
+                  let etiquetaRol = 'Jugador';
+
+                  if (u.rol === 'encargado') {
+                    badgeColor = Colores.secundario;
+                    etiquetaRol = 'Encargado Predio';
+                  } else if (u.rol === 'administrador') {
+                    badgeColor = '#6366F1';
+                    etiquetaRol = 'Dir. Deportes';
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={u.id}
+                      style={[
+                        styles.tarjetaPerfilDemo,
+                        {
+                          backgroundColor: colores.tarjeta,
+                          borderColor: esActivo ? Colores.primarioClaro : colores.borde,
+                          borderWidth: esActivo ? 2 : 1,
+                        },
+                      ]}
+                      onPress={() => seleccionarUsuarioDemo(u)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.filaDemoTop}>
+                        <Text style={[styles.demoNombre, { color: colores.texto }]}>
+                          {u.nombre.split(' ')[0]} {u.nombre.split(' ')[1] || ''}
+                        </Text>
+                        <View style={[styles.badgeMiniRol, { backgroundColor: badgeColor + '20' }]}>
+                          <Text style={[styles.badgeMiniRolTexto, { color: badgeColor }]}>
+                            {etiquetaRol}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.demoEmail, { color: colores.textoSecundario }]}>
+                        {u.email}
+                      </Text>
+                      {u.cancelacionesTardias > 0 && (
+                        <Text style={[styles.demoAlerta, { color: Colores.advertencia }]}>
+                          ⚠️ {u.cancelacionesTardias} canc. tardías
+                        </Text>
+                      )}
+                      {esActivo && (
+                        <Text style={[styles.demoSesionActiva, { color: Colores.primarioClaro }]}>
+                          ✓ Sesión activa
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        ) : (
+          /* ---------------- PESTAÑA: CREAR CUENTA ---------------- */
+          <View style={styles.bloqueFormulario}>
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Nombre y Apellido</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="person-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="Ej: Martín Fernández"
+                  placeholderTextColor={colores.textoMuted}
+                  value={nombreReg}
+                  onChangeText={setNombreReg}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Correo electrónico</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="mail-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="ejemplo@correo.com"
+                  placeholderTextColor={colores.textoMuted}
+                  value={emailReg}
+                  onChangeText={setEmailReg}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Teléfono / WhatsApp de contacto</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="call-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="3455-123456"
+                  placeholderTextColor={colores.textoMuted}
+                  value={telefonoReg}
+                  onChangeText={setTelefonoReg}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Crear Contraseña (mínimo 6 caracteres)</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="lock-closed-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="Tu contraseña secreta"
+                  placeholderTextColor={colores.textoMuted}
+                  value={passwordReg}
+                  onChangeText={setPasswordReg}
+                  secureTextEntry={!verPasswordReg}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setVerPasswordReg(prev => !prev)}>
+                  <Icono
+                    nombre={verPasswordReg ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colores.textoMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>Confirmar Contraseña</Text>
+              <View style={[styles.contenedorInput, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+                <Icono nombre="shield-checkmark-outline" size={20} color={colores.textoMuted} />
+                <TextInput
+                  style={[styles.inputTexto, { color: colores.texto }]}
+                  placeholder="Repetí tu contraseña"
+                  placeholderTextColor={colores.textoMuted}
+                  value={passwordConfirmReg}
+                  onChangeText={setPasswordConfirmReg}
+                  secureTextEntry={!verPasswordReg}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            {/* Botón de Registro */}
+            <TouchableOpacity
+              style={[styles.botonPrincipal, { backgroundColor: Colores.primarioClaro, marginTop: 10 }]}
+              onPress={manejarRegistro}
+              disabled={cargandoReg}
+              activeOpacity={0.8}
+            >
+              {cargandoReg ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Icono nombre="checkmark-circle-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.botonPrincipalTexto}>Crear mi cuenta y comenzar</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.botonCambiarPestaña}
+              onPress={() => setPestaña('login')}
+            >
+              <Text style={[styles.textoCambiarPestaña, { color: colores.textoSecundario }]}>
+                ¿Ya tenés una cuenta?{' '}
+                <Text style={{ color: Colores.primarioClaro, fontWeight: '700' }}>Iniciá sesión acá</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -200,19 +528,19 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   logoContenedor: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: 'rgba(26, 77, 46, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   titulo: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
     textAlign: 'center',
   },
@@ -220,98 +548,161 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-    marginTop: 6,
-    maxWidth: 320,
+    marginTop: 4,
+    maxWidth: 300,
   },
-  seccionDemo: {
-    gap: 12,
-    marginBottom: 28,
-  },
-  seccionTitulo: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  tarjetaUsuario: {
+  selectorPestañas: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    gap: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 4,
+    marginBottom: 20,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  pestañaBoton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
   },
-  infoUsuario: {
-    flex: 1,
+  pestañaTexto: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  filaNombreRol: {
+  bloqueFormulario: {
+    gap: 14,
+  },
+  grupoCampo: {
+    gap: 6,
+  },
+  filaLabelRecuperar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  etiquetaCampo: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  enlaceRecuperar: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  contenedorInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 48,
+    gap: 10,
   },
-  nombreUsuario: {
+  inputTexto: {
+    flex: 1,
+    fontSize: 14,
+    height: '100%',
+  },
+  botonPrincipal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: Colores.primarioClaro,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  botonPrincipalTexto: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
-  badgeRol: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  botonBiometria: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
   },
-  badgeRolTexto: {
-    fontSize: 10,
+  botonBiometriaTexto: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  seccionEvaluacion: {
+    borderTopWidth: 1,
+    paddingTop: 18,
+    marginTop: 8,
+    gap: 10,
+  },
+  cabeceraEvaluacion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tituloEvaluacion: {
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  emailUsuario: {
+  descEvaluacion: {
     fontSize: 12,
+    lineHeight: 16,
   },
-  detallesUsuario: {
-    marginTop: 4,
-  },
-  alertaPenalizacion: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  descripcionPermiso: {
-    fontSize: 11,
-  },
-  iconoActivo: {
-    paddingLeft: 4,
-  },
-  seccionCustom: {
-    borderTopWidth: 1,
-    paddingTop: 20,
-    gap: 12,
-  },
-  inputContainer: {
+  grillaPerfiles: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
-  inputEmail: {
-    flex: 1,
-    height: 48,
-    borderWidth: 1,
+  tarjetaPerfilDemo: {
+    width: '48%',
     borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    padding: 10,
+    gap: 3,
   },
-  botonIngresar: {
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  filaDemoTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  botonIngresarTexto: {
-    color: '#FFFFFF',
+  demoNombre: {
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
+    flex: 1,
+  },
+  badgeMiniRol: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeMiniRolTexto: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  demoEmail: {
+    fontSize: 11,
+  },
+  demoAlerta: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  demoSesionActiva: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  botonCambiarPestaña: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  textoCambiarPestaña: {
+    fontSize: 13,
   },
 });

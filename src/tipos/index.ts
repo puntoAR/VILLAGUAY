@@ -82,6 +82,24 @@ export interface Usuario {
   espaciosFavoritos: string[];
   cancelacionesTardias: number;
   ausencias: number;
+  password?: string;
+}
+
+export interface CredencialesLogin {
+  email: string;
+  password?: string;
+}
+
+export interface DatosRegistro {
+  nombre: string;
+  email: string;
+  telefono: string;
+  password?: string;
+}
+
+export interface RespuestaAuth {
+  usuario: Usuario;
+  token: string;
 }
 
 export interface BloqueoMantenimiento {

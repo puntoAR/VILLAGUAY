@@ -90,9 +90,17 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
       rol TEXT NOT NULL,
       espaciosFavoritos TEXT NOT NULL,
       cancelacionesTardias INTEGER NOT NULL,
-      ausencias INTEGER NOT NULL
+      ausencias INTEGER NOT NULL,
+      password TEXT
     );
   `);
+
+  // Asegurar columna password si la base ya estaba creada
+  try {
+    await db.execAsync('ALTER TABLE usuarios ADD COLUMN password TEXT;');
+  } catch {
+    // Si ya existe la columna, SQLite arroja error que capturamos de forma segura
+  }
 
   // Sembrar datos iniciales si no existen
   const countEspacios = await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) as total FROM espacios');
@@ -150,8 +158,8 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
 
     for (const u of USUARIOS_MOCK) {
       await db.runAsync(
-        'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [u.id, u.nombre, u.email, u.telefono, u.rol, JSON.stringify(u.espaciosFavoritos), u.cancelacionesTardias, u.ausencias]
+        'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [u.id, u.nombre, u.email, u.telefono, u.rol, JSON.stringify(u.espaciosFavoritos), u.cancelacionesTardias, u.ausencias, u.password || '123456']
       );
     }
   }

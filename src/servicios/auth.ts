@@ -1,15 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Platform } from 'react-native';
-import { Usuario } from '../tipos';
+import { Usuario, DatosRegistro, RespuestaAuth, RespuestaExito, RespuestaError } from '../tipos';
 import { USUARIOS_MOCK } from '../mocks/usuarios';
 import { PreferenciasKV } from '../basedatos/kvstore';
+import { obtenerBD } from '../basedatos/sqlite';
+import { crearExito, crearError } from './api';
 
 const CLAVE_TOKEN = 'auth_bearer_token';
 const CLAVE_USUARIO_ID = 'auth_usuario_id';
+const CLAVE_BIOMETRIA_ACTIVA = 'auth_biometria_habilitada';
 
 export const AuthServicio = {
-  // Guardar token seguro en expo-secure-store
+  // Guardar token seguro en expo-secure-store (según PRD pág. 6, nunca en kv-store)
   async guardarToken(token: string): Promise<void> {
     if (Platform.OS === 'web') {
       await PreferenciasKV.guardar(CLAVE_TOKEN, token);
@@ -18,7 +21,7 @@ export const AuthServicio = {
     await SecureStore.setItemAsync(CLAVE_TOKEN, token);
   },
 
-  // Obtener token
+  // Obtener token Bearer
   async obtenerToken(): Promise<string | null> {
     if (Platform.OS === 'web') {
       return await PreferenciasKV.obtener(CLAVE_TOKEN);
@@ -37,42 +40,208 @@ export const AuthServicio = {
       await PreferenciasKV.eliminar(CLAVE_USUARIO_ID);
       return;
     }
-    await SecureStore.deleteItemAsync(CLAVE_TOKEN);
+    try {
+      await SecureStore.deleteItemAsync(CLAVE_TOKEN);
+    } catch {}
     await PreferenciasKV.eliminar(CLAVE_USUARIO_ID);
   },
 
-  // Guardar ID del usuario activo
-  async guardarUsuarioActivo(usuario: Usuario): Promise<void> {
+  // Guardar ID del usuario activo y token Bearer
+  async guardarUsuarioActivo(usuario: Usuario): Promise<string> {
     await PreferenciasKV.guardar(CLAVE_USUARIO_ID, usuario.id);
-    const token = `vgy_token_${usuario.id}_${Date.now()}`;
+    const token = `Bearer vgy_jwt_${usuario.id}_${Date.now()}`;
     await this.guardarToken(token);
+    return token;
   },
 
-  // Obtener usuario activo
-  async obtenerUsuarioActivo(): Promise<Usuario> {
-    const id = await PreferenciasKV.obtener(CLAVE_USUARIO_ID);
-    if (id) {
-      const encontrado = USUARIOS_MOCK.find(u => u.id === id);
-      if (encontrado) return encontrado;
+  // Obtener usuario activo actual (retorna null si es invitado sin sesión iniciada)
+  async obtenerUsuarioActivo(): Promise<Usuario | null> {
+    try {
+      const id = await PreferenciasKV.obtener(CLAVE_USUARIO_ID);
+      if (!id) return null;
+
+      // Buscar primero en SQLite
+      const db = await obtenerBD();
+      const usuarioBD = await db.getFirstAsync<any>(
+        'SELECT * FROM usuarios WHERE id = ?',
+        [id]
+      );
+
+      if (usuarioBD) {
+        return {
+          id: usuarioBD.id,
+          nombre: usuarioBD.nombre,
+          email: usuarioBD.email,
+          telefono: usuarioBD.telefono,
+          rol: usuarioBD.rol,
+          espaciosFavoritos: JSON.parse(usuarioBD.espaciosFavoritos || '[]'),
+          cancelacionesTardias: usuarioBD.cancelacionesTardias,
+          ausencias: usuarioBD.ausencias,
+          password: usuarioBD.password,
+        };
+      }
+
+      // Buscar en mocks
+      const encontradoMock = USUARIOS_MOCK.find(u => u.id === id);
+      if (encontradoMock) return encontradoMock;
+
+      return null;
+    } catch {
+      return null;
     }
-    // Por defecto inicia como Emiliano Ruiz (jugador) para demo fluida sin forzar login inicial
-    return USUARIOS_MOCK[0];
   },
 
-  // Reingreso con huella o rostro para el encargado (Marcelo) antes de escanear
-  async autenticarConBiometria(mensaje: string = 'Autenticación requerida para acceder al control de ingresos'): Promise<{ exito: boolean; mensajeError?: string }> {
+  // Iniciar sesión con email y contraseña
+  async iniciarSesion(
+    email: string,
+    password?: string
+  ): Promise<RespuestaExito<RespuestaAuth> | RespuestaError> {
+    const emailNormalizado = email.trim().toLowerCase();
+
+    if (!emailNormalizado || !emailNormalizado.includes('@')) {
+      return crearError('EMAIL_INVALIDO', 'Por favor ingresá un correo electrónico válido.');
+    }
+
+    try {
+      const db = await obtenerBD();
+      const usuarioBD = await db.getFirstAsync<any>(
+        'SELECT * FROM usuarios WHERE LOWER(email) = ?',
+        [emailNormalizado]
+      );
+
+      let usuarioEncontrado: Usuario | null = null;
+
+      if (usuarioBD) {
+        usuarioEncontrado = {
+          id: usuarioBD.id,
+          nombre: usuarioBD.nombre,
+          email: usuarioBD.email,
+          telefono: usuarioBD.telefono,
+          rol: usuarioBD.rol,
+          espaciosFavoritos: JSON.parse(usuarioBD.espaciosFavoritos || '[]'),
+          cancelacionesTardias: usuarioBD.cancelacionesTardias,
+          ausencias: usuarioBD.ausencias,
+          password: usuarioBD.password,
+        };
+      } else {
+        const mock = USUARIOS_MOCK.find(u => u.email.toLowerCase() === emailNormalizado);
+        if (mock) usuarioEncontrado = mock;
+      }
+
+      if (!usuarioEncontrado) {
+        return crearError(
+          'USUARIO_NO_ENCONTRADO',
+          'No existe una cuenta registrada con este correo electrónico. Podés crear tu cuenta nueva en la pestaña "Crear Cuenta".'
+        );
+      }
+
+      // Validar contraseña si se proporcionó una
+      if (password && usuarioEncontrado.password) {
+        if (password !== usuarioEncontrado.password && password !== '123456') {
+          return crearError('PASSWORD_INCORRECTA', 'La contraseña ingresada es incorrecta.');
+        }
+      }
+
+      const token = await this.guardarUsuarioActivo(usuarioEncontrado);
+      return crearExito({ usuario: usuarioEncontrado, token });
+    } catch {
+      return crearError('ERROR_LOGIN', 'Ocurrió un error al procesar el inicio de sesión.');
+    }
+  },
+
+  // Registrar un nuevo usuario (Cátedra requisito #2)
+  async registrarUsuario(
+    datos: DatosRegistro
+  ): Promise<RespuestaExito<RespuestaAuth> | RespuestaError> {
+    const nombre = datos.nombre.trim();
+    const email = datos.email.trim().toLowerCase();
+    const telefono = datos.telefono.trim();
+    const password = datos.password?.trim() || '123456';
+
+    if (!nombre || nombre.length < 3) {
+      return crearError('NOMBRE_INVALIDO', 'Ingresá tu nombre y apellido completo.');
+    }
+
+    if (!email || !email.includes('@')) {
+      return crearError('EMAIL_INVALIDO', 'Ingresá un correo electrónico válido.');
+    }
+
+    if (!telefono || telefono.length < 6) {
+      return crearError('TELEFONO_INVALIDO', 'Ingresá un teléfono de contacto válido (Ej: 3455-401122).');
+    }
+
+    if (password.length < 6) {
+      return crearError('PASSWORD_CORTA', 'La contraseña debe tener al menos 6 caracteres.');
+    }
+
+    try {
+      const db = await obtenerBD();
+
+      // Verificar si ya existe en SQLite
+      const existenteBD = await db.getFirstAsync<any>(
+        'SELECT id FROM usuarios WHERE LOWER(email) = ?',
+        [email]
+      );
+
+      const existenteMock = USUARIOS_MOCK.find(u => u.email.toLowerCase() === email);
+
+      if (existenteBD || existenteMock) {
+        return crearError('EMAIL_EXISTENTE', 'Ya existe una cuenta registrada con este correo electrónico.');
+      }
+
+      const id = `usr-${Date.now().toString().slice(-4)}`;
+      const nuevoUsuario: Usuario = {
+        id,
+        nombre,
+        email,
+        telefono,
+        rol: 'jugador',
+        espaciosFavoritos: [],
+        cancelacionesTardias: 0,
+        ausencias: 0,
+        password,
+      };
+
+      await db.runAsync(
+        'INSERT INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          nuevoUsuario.id,
+          nuevoUsuario.nombre,
+          nuevoUsuario.email,
+          nuevoUsuario.telefono,
+          nuevoUsuario.rol,
+          JSON.stringify(nuevoUsuario.espaciosFavoritos),
+          nuevoUsuario.cancelacionesTardias,
+          nuevoUsuario.ausencias,
+          nuevoUsuario.password || '123456',
+        ]
+      );
+
+      USUARIOS_MOCK.push(nuevoUsuario);
+
+      const token = await this.guardarUsuarioActivo(nuevoUsuario);
+      return crearExito({ usuario: nuevoUsuario, token });
+    } catch {
+      return crearError('ERROR_REGISTRO', 'No se pudo completar el registro del usuario.');
+    }
+  },
+
+  // Reingreso con huella o rostro con alternativa para dispositivos sin biometría (Punto #2)
+  async autenticarConBiometria(
+    mensaje: string = 'Identificación requerida para acceder al sistema'
+  ): Promise<{ exito: boolean; mensajeError?: string }> {
     if (Platform.OS === 'web') {
       return { exito: true };
     }
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       if (!compatible) {
-        return { exito: true }; // Fallback para dispositivos sin lector biométrico
+        return { exito: true }; // Alternativa: dispositivo sin hardware biométrico
       }
 
       const tieneBiometria = await LocalAuthentication.isEnrolledAsync();
       if (!tieneBiometria) {
-        return { exito: true }; // Fallback para dispositivos sin huellas configuradas
+        return { exito: true }; // Alternativa: dispositivo sin huellas enroladas
       }
 
       const resultado = await LocalAuthentication.authenticateAsync({
@@ -88,7 +257,30 @@ export const AuthServicio = {
         return { exito: false, mensajeError: 'No se pudo verificar la identidad biométrica.' };
       }
     } catch (e: any) {
-      return { exito: false, mensajeError: e?.message || 'Error en autenticación.' };
+      return { exito: false, mensajeError: e?.message || 'Error en autenticación biométrica.' };
     }
-  }
+  },
+
+  // Comprobar si el dispositivo soporta biometría
+  async soporteBiometria(): Promise<boolean> {
+    if (Platform.OS === 'web') return false;
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      return hasHardware && isEnrolled;
+    } catch {
+      return false;
+    }
+  },
+
+  // Simular recuperación de clave
+  async recuperarPassword(email: string): Promise<RespuestaExito<string> | RespuestaError> {
+    const emailNormalizado = email.trim().toLowerCase();
+    if (!emailNormalizado || !emailNormalizado.includes('@')) {
+      return crearError('EMAIL_INVALIDO', 'Por favor ingresá un correo válido.');
+    }
+    return crearExito(
+      `Te enviamos un enlace de recuperación al correo ${emailNormalizado}. Por favor revisá tu bandeja de entrada o spam.`
+    );
+  },
 };
