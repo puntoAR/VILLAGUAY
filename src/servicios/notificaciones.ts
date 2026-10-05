@@ -5,7 +5,7 @@ let Notifications: typeof import('expo-notifications') | null = null;
 try {
   Notifications = require('expo-notifications');
 } catch (error) {
-  console.warn('[Notificaciones] Expo Go restrict mode:', error);
+  // En Expo Go (SDK 53/54) las notificaciones push nativas están restringidas por Expo
 }
 
 // Configurar el handler solo si el módulo está disponible

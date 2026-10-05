@@ -18,10 +18,14 @@ import { EstadoVacio } from '../../src/componentes/EstadoVacio';
 import { EstadoError } from '../../src/componentes/EstadoError';
 import { Icono } from '../../src/componentes/Icono';
 import { useTema } from '../../src/contexto/ThemeContext';
+import { useAuth } from '../../src/contexto/AuthContext';
+import { useRouter } from 'expo-router';
 import { Colores } from '../../src/constantes/tema';
 
 export default function PantallaExplorar() {
   const { colores } = useTema();
+  const { usuario } = useAuth();
+  const router = useRouter();
 
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
@@ -92,6 +96,57 @@ export default function PantallaExplorar() {
 
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+      {/* Banner de Estado de Autenticación */}
+      <TouchableOpacity
+        style={[
+          styles.bannerAuth,
+          {
+            backgroundColor: usuario ? colores.tarjeta : Colores.primarioClaro,
+            borderColor: usuario ? colores.borde : Colores.primarioClaro,
+          },
+        ]}
+        onPress={() => router.push('/login')}
+        activeOpacity={0.8}
+      >
+        <View
+          style={[
+            styles.bannerAuthIcono,
+            { backgroundColor: usuario ? 'rgba(46, 125, 50, 0.12)' : 'rgba(255, 255, 255, 0.2)' },
+          ]}
+        >
+          <Icono
+            nombre={usuario ? 'person-circle-outline' : 'key-outline'}
+            size={22}
+            color={usuario ? Colores.primarioClaro : '#FFFFFF'}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              styles.bannerAuthTitulo,
+              { color: usuario ? colores.texto : '#FFFFFF' },
+            ]}
+          >
+            {usuario ? `Sesión: ${usuario.nombre}` : '¿Querés reservar una cancha?'}
+          </Text>
+          <Text
+            style={[
+              styles.bannerAuthSub,
+              { color: usuario ? colores.textoSecundario : 'rgba(255,255,255,0.85)' },
+            ]}
+          >
+            {usuario
+              ? `Rol: ${usuario.rol.toUpperCase()} • Tocá para cambiar cuenta`
+              : 'Iniciá sesión o registrate para confirmar turnos'}
+          </Text>
+        </View>
+        <Icono
+          nombre="chevron-forward"
+          size={18}
+          color={usuario ? colores.textoMuted : '#FFFFFF'}
+        />
+      </TouchableOpacity>
+
       {/* Barra de búsqueda */}
       <View style={[styles.buscadorContenedor, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
         <Icono nombre="search-outline" size={18} color={colores.textoMuted} />
@@ -234,6 +289,37 @@ export default function PantallaExplorar() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
+  },
+  bannerAuth: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  bannerAuthIcono: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerAuthTitulo: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  bannerAuthSub: {
+    fontSize: 11,
   },
   buscadorContenedor: {
     flexDirection: 'row',

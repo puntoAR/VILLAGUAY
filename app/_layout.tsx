@@ -1,4 +1,5 @@
 import React from 'react';
+import { LogBox } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -7,6 +8,9 @@ import { AuthProvider } from '../src/contexto/AuthContext';
 import { RedProvider } from '../src/contexto/RedContext';
 import { BannerDesconexion } from '../src/componentes/BannerDesconexion';
 import { Colores } from '../src/constantes/tema';
+
+// Ocultar alertas flotantes no críticas de Expo Go para ver la interfaz directamente
+LogBox.ignoreAllLogs(true);
 
 function ContenidoPrincipal() {
   const { esOscuro, colores } = useTema();

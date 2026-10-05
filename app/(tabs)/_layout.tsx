@@ -1,5 +1,6 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
 import { useTema } from '../../src/contexto/ThemeContext';
 import { useAuth } from '../../src/contexto/AuthContext';
 import { Icono } from '../../src/componentes/Icono';
@@ -7,7 +8,8 @@ import { Colores } from '../../src/constantes/tema';
 
 export default function TabsLayout() {
   const { esOscuro, colores } = useTema();
-  const { esEncargadoOAdmin } = useAuth();
+  const { usuario, esEncargadoOAdmin } = useAuth();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -20,6 +22,34 @@ export default function TabsLayout() {
           fontWeight: '700',
           fontSize: 18,
         },
+        headerRight: () => (
+          <TouchableOpacity
+            style={[
+              styles.botonHeaderLogin,
+              {
+                backgroundColor: usuario
+                  ? 'rgba(232, 170, 66, 0.25)'
+                  : 'rgba(255, 255, 255, 0.22)',
+              },
+            ]}
+            onPress={() => router.push('/login')}
+            activeOpacity={0.7}
+          >
+            <Icono
+              nombre={usuario ? 'person-circle-outline' : 'log-in-outline'}
+              size={18}
+              color={usuario ? Colores.acento : '#FFFFFF'}
+            />
+            <Text
+              style={[
+                styles.textoHeaderLogin,
+                { color: usuario ? Colores.acento : '#FFFFFF' },
+              ]}
+            >
+              {usuario ? usuario.nombre.split(' ')[0] : 'Ingresar'}
+            </Text>
+          </TouchableOpacity>
+        ),
         tabBarStyle: {
           backgroundColor: esOscuro ? Colores.oscuro.tarjeta : '#FFFFFF',
           borderTopColor: colores.borde,
@@ -113,3 +143,19 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  botonHeaderLogin: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 14,
+    gap: 5,
+  },
+  textoHeaderLogin: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+});
