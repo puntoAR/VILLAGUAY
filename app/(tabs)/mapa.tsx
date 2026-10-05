@@ -9,7 +9,15 @@ import {
   ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
-import MapView, { Marker } from 'react-native-maps';
+let MapView: any = null;
+let Marker: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default || Maps;
+    Marker = Maps.Marker;
+  } catch {}
+}
 import { useTema } from '../../src/contexto/ThemeContext';
 import { Icono } from '../../src/componentes/Icono';
 import { Colores } from '../../src/constantes/tema';
