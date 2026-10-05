@@ -38,27 +38,37 @@ export const AuthServicio = {
     if (Platform.OS === 'web') {
       await PreferenciasKV.eliminar(CLAVE_TOKEN);
       await PreferenciasKV.eliminar(CLAVE_USUARIO_ID);
+      await PreferenciasKV.guardar('auth_sesion_cerrada', 'true');
       return;
     }
     try {
       await SecureStore.deleteItemAsync(CLAVE_TOKEN);
     } catch {}
     await PreferenciasKV.eliminar(CLAVE_USUARIO_ID);
+    await PreferenciasKV.guardar('auth_sesion_cerrada', 'true');
   },
 
   // Guardar ID del usuario activo y token Bearer
   async guardarUsuarioActivo(usuario: Usuario): Promise<string> {
+    await PreferenciasKV.eliminar('auth_sesion_cerrada');
     await PreferenciasKV.guardar(CLAVE_USUARIO_ID, usuario.id);
     const token = `Bearer vgy_jwt_${usuario.id}_${Date.now()}`;
     await this.guardarToken(token);
     return token;
   },
 
-  // Obtener usuario activo actual (retorna null si es invitado sin sesión iniciada)
+  // Obtener usuario activo actual (retorna usuario guardado, o Emiliano por defecto para demo fluida de cátedra)
   async obtenerUsuarioActivo(): Promise<Usuario | null> {
     try {
+      const sesionCerrada = await PreferenciasKV.obtener('auth_sesion_cerrada');
+      if (sesionCerrada === 'true') {
+        return null;
+      }
+
       const id = await PreferenciasKV.obtener(CLAVE_USUARIO_ID);
-      if (!id) return null;
+      if (!id) {
+        return USUARIOS_MOCK[0];
+      }
 
       // Buscar primero en SQLite
       const db = await obtenerBD();
@@ -85,9 +95,9 @@ export const AuthServicio = {
       const encontradoMock = USUARIOS_MOCK.find(u => u.id === id);
       if (encontradoMock) return encontradoMock;
 
-      return null;
+      return USUARIOS_MOCK[0];
     } catch {
-      return null;
+      return USUARIOS_MOCK[0];
     }
   },
 
