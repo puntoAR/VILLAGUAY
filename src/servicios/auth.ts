@@ -67,7 +67,7 @@ export const AuthServicio = {
 
       const id = await PreferenciasKV.obtener(CLAVE_USUARIO_ID);
       if (!id) {
-        return USUARIOS_MOCK[0];
+        return null;
       }
 
       // Buscar primero en SQLite
@@ -200,12 +200,13 @@ export const AuthServicio = {
       }
 
       const id = `usr-${Date.now().toString().slice(-4)}`;
+      const rolSeleccionado = datos.rol || 'jugador';
       const nuevoUsuario: Usuario = {
         id,
         nombre,
         email,
         telefono,
-        rol: 'jugador',
+        rol: rolSeleccionado,
         espaciosFavoritos: [],
         cancelacionesTardias: 0,
         ausencias: 0,
@@ -292,5 +293,114 @@ export const AuthServicio = {
     return crearExito(
       `Te enviamos un enlace de recuperación al correo ${emailNormalizado}. Por favor revisá tu bandeja de entrada o spam.`
     );
+  },
+
+  // Obtener lista de personal administrativo (encargados y administradores)
+  async obtenerUsuariosPersonal(): Promise<Usuario[]> {
+    try {
+      const db = await obtenerBD();
+      const usuariosBD = await db.getAllAsync<any>(
+        'SELECT * FROM usuarios WHERE rol IN ("encargado", "administrador")'
+      );
+
+      const listaMap = new Map<string, Usuario>();
+
+      USUARIOS_MOCK.filter(u => u.rol === 'encargado' || u.rol === 'administrador').forEach(u => {
+        listaMap.set(u.id, u);
+      });
+
+      if (usuariosBD) {
+        usuariosBD.forEach(u => {
+          listaMap.set(u.id, {
+            id: u.id,
+            nombre: u.nombre,
+            email: u.email,
+            telefono: u.telefono,
+            rol: u.rol,
+            espaciosFavoritos: JSON.parse(u.espaciosFavoritos || '[]'),
+            cancelacionesTardias: u.cancelacionesTardias,
+            ausencias: u.ausencias,
+            password: u.password,
+          });
+        });
+      }
+
+      return Array.from(listaMap.values());
+    } catch {
+      return USUARIOS_MOCK.filter(u => u.rol === 'encargado' || u.rol === 'administrador');
+    }
+  },
+
+  // Crear un nuevo usuario de personal sin cambiar la sesión del administrador actual
+  async crearUsuarioPersonal(
+    datos: DatosRegistro
+  ): Promise<RespuestaExito<Usuario> | RespuestaError> {
+    const nombre = datos.nombre.trim();
+    const email = datos.email.trim().toLowerCase();
+    const telefono = datos.telefono.trim();
+    const password = datos.password?.trim() || '123456';
+    const rol = datos.rol || 'encargado';
+
+    if (!nombre || nombre.length < 3) {
+      return crearError('NOMBRE_INVALIDO', 'Ingresá el nombre y apellido completo del personal.');
+    }
+
+    if (!email || !email.includes('@')) {
+      return crearError('EMAIL_INVALIDO', 'Ingresá un correo electrónico válido.');
+    }
+
+    if (!telefono || telefono.length < 6) {
+      return crearError('TELEFONO_INVALIDO', 'Ingresá un teléfono de contacto válido.');
+    }
+
+    if (password.length < 6) {
+      return crearError('PASSWORD_CORTA', 'La contraseña asignada debe tener al menos 6 caracteres.');
+    }
+
+    try {
+      const db = await obtenerBD();
+      const existenteBD = await db.getFirstAsync<any>(
+        'SELECT id FROM usuarios WHERE LOWER(email) = ?',
+        [email]
+      );
+      const existenteMock = USUARIOS_MOCK.find(u => u.email.toLowerCase() === email);
+
+      if (existenteBD || existenteMock) {
+        return crearError('EMAIL_EXISTENTE', 'Ya existe un usuario registrado con este correo electrónico.');
+      }
+
+      const id = `usr-${Date.now().toString().slice(-4)}`;
+      const nuevoUsuario: Usuario = {
+        id,
+        nombre,
+        email,
+        telefono,
+        rol,
+        espaciosFavoritos: [],
+        cancelacionesTardias: 0,
+        ausencias: 0,
+        password,
+      };
+
+      await db.runAsync(
+        'INSERT INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          nuevoUsuario.id,
+          nuevoUsuario.nombre,
+          nuevoUsuario.email,
+          nuevoUsuario.telefono,
+          nuevoUsuario.rol,
+          JSON.stringify(nuevoUsuario.espaciosFavoritos),
+          nuevoUsuario.cancelacionesTardias,
+          nuevoUsuario.ausencias,
+          nuevoUsuario.password,
+        ]
+      );
+
+      USUARIOS_MOCK.push(nuevoUsuario);
+      return crearExito(nuevoUsuario);
+    } catch {
+      return crearError('ERROR_CREAR_PERSONAL', 'No se pudo guardar el nuevo usuario en el sistema.');
+    }
   },
 };

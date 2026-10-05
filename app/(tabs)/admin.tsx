@@ -9,7 +9,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { Espacio, ReservaFija, BloqueoMantenimiento, Turno } from '../../src/tipos';
+import { Espacio, ReservaFija, BloqueoMantenimiento, Turno, Usuario, Rol } from '../../src/tipos';
 import { EspaciosServicio } from '../../src/servicios/espacios';
 import { TurnosServicio } from '../../src/servicios/turnos';
 import { BloqueosServicio } from '../../src/servicios/bloqueos';
@@ -27,7 +27,7 @@ export default function PantallaAdmin() {
   const { usuario, esEncargadoOAdmin, cambiarRolDemo } = useAuth();
   const router = useRouter();
 
-  const [seccionActiva, setSeccionActiva] = useState<'agenda' | 'bloqueos' | 'fijas' | 'precios'>('agenda');
+  const [seccionActiva, setSeccionActiva] = useState<'agenda' | 'bloqueos' | 'fijas' | 'precios' | 'personal'>('agenda');
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoMantenimiento[]>([]);
   const [fijas, setFijas] = useState<ReservaFija[]>([]);
@@ -54,6 +54,16 @@ export default function PantallaAdmin() {
   const [precioEspacioId, setPrecioEspacioId] = useState('esp-01');
   const [nuevoPrecio, setNuevoPrecio] = useState('12000');
 
+  // Gestión de Personal Administrativo (Encargados y Administradores)
+  const [personal, setPersonal] = useState<Usuario[]>([]);
+  const [modalPersonalVisible, setModalPersonalVisible] = useState(false);
+  const [personalNombre, setPersonalNombre] = useState('');
+  const [personalEmail, setPersonalEmail] = useState('');
+  const [personalTelefono, setPersonalTelefono] = useState('3455-');
+  const [personalPassword, setPersonalPassword] = useState('123456');
+  const [personalRol, setPersonalRol] = useState<Rol>('encargado');
+  const [creandoPersonal, setCreandoPersonal] = useState(false);
+
   const cargarDatos = async () => {
     const respEsp = await EspaciosServicio.obtenerEspacios();
     if (!esError(respEsp)) {
@@ -72,6 +82,8 @@ export default function PantallaAdmin() {
     if (!esError(respFij)) {
       setFijas(respFij.datos);
     }
+
+    AuthServicio.obtenerUsuariosPersonal().then(setPersonal);
   };
 
   useEffect(() => {
@@ -151,6 +163,41 @@ export default function PantallaAdmin() {
       cargarDatos();
     } else {
       Alert.alert('Error', resp.error.mensaje);
+    }
+  };
+
+  const handleCrearPersonal = async () => {
+    if (!personalNombre.trim() || !personalEmail.trim() || !personalPassword.trim()) {
+      Alert.alert('Datos incompletos', 'Nombre, email y contraseña son obligatorios.');
+      return;
+    }
+
+    setCreandoPersonal(true);
+    try {
+      const resp = await AuthServicio.crearUsuarioPersonal({
+        nombre: personalNombre.trim(),
+        email: personalEmail.trim().toLowerCase(),
+        telefono: personalTelefono.trim(),
+        password: personalPassword,
+        rol: personalRol,
+      });
+
+      if (!esError(resp)) {
+        Alert.alert(
+          'Personal Creado',
+          `Se dio de alta a ${resp.datos.nombre} con el rol ${personalRol.toUpperCase()}.`
+        );
+        setModalPersonalVisible(false);
+        setPersonalNombre('');
+        setPersonalEmail('');
+        setPersonalTelefono('3455-');
+        setPersonalPassword('123456');
+        cargarDatos();
+      } else {
+        Alert.alert('Error', resp.error.mensaje);
+      }
+    } finally {
+      setCreandoPersonal(false);
     }
   };
 
@@ -239,6 +286,13 @@ export default function PantallaAdmin() {
           onPress={() => setSeccionActiva('precios')}
         >
           <Text style={[styles.pestanaTexto, seccionActiva === 'precios' && styles.pestanaTextoActivo]}>Precios</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.pestana, seccionActiva === 'personal' && styles.pestanaActiva]}
+          onPress={() => setSeccionActiva('personal')}
+        >
+          <Text style={[styles.pestanaTexto, seccionActiva === 'personal' && styles.pestanaTextoActivo]}>Personal</Text>
         </TouchableOpacity>
       </View>
 
@@ -446,6 +500,74 @@ export default function PantallaAdmin() {
         </View>
       )}
 
+      {/* 5. SECCIÓN GESTIÓN DE PERSONAL ADMINISTRATIVO */}
+      {seccionActiva === 'personal' && (
+        <View style={styles.seccionContenido}>
+          <View style={styles.filaTituloBoton}>
+            <View>
+              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Personal Autorizado</Text>
+              <Text style={{ color: colores.textoSecundario, fontSize: 12 }}>
+                Encargados de predio y Directores deportivos
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.botonNuevo}
+              onPress={() => setModalPersonalVisible(true)}
+            >
+              <Icono nombre="person-add-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.botonNuevoTexto}>+ Alta Personal</Text>
+            </TouchableOpacity>
+          </View>
+
+          {personal.map(p => (
+            <View
+              key={p.id}
+              style={[
+                styles.tarjetaPersonal,
+                { backgroundColor: colores.tarjeta, borderColor: colores.borde },
+              ]}
+            >
+              <View style={styles.avatarPersonal}>
+                <Icono
+                  nombre={p.rol === 'administrador' ? 'shield-checkmark' : 'id-card'}
+                  size={24}
+                  color={p.rol === 'administrador' ? '#D97706' : Colores.primario}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.nombrePersonal, { color: colores.texto }]}>{p.nombre}</Text>
+                  <View
+                    style={[
+                      styles.badgeMiniRol,
+                      {
+                        backgroundColor:
+                          p.rol === 'administrador' ? 'rgba(217, 119, 6, 0.15)' : 'rgba(26, 77, 46, 0.15)',
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.badgeMiniRolTexto,
+                        { color: p.rol === 'administrador' ? '#D97706' : Colores.primario },
+                      ]}
+                    >
+                      {p.rol.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ color: colores.textoSecundario, fontSize: 12, marginTop: 2 }}>{p.email}</Text>
+                {p.telefono ? (
+                  <Text style={{ color: colores.textoMuted, fontSize: 11, marginTop: 1 }}>
+                    📞 {p.telefono}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* MODAL NUEVO BLOQUEO */}
       <Modal visible={modalBloqueoVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
@@ -576,6 +698,125 @@ export default function PantallaAdmin() {
                 onPress={handleCrearFija}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Guardar Fija</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL NUEVO PERSONAL */}
+      <Modal visible={modalPersonalVisible} animationType="slide" transparent>
+        <View style={styles.modalFondo}>
+          <View style={[styles.modalCuerpo, { backgroundColor: colores.tarjeta }]}>
+            <Text style={[styles.modalTitulo, { color: colores.texto }]}>Alta de Personal Administrativo</Text>
+
+            <Text style={[styles.label, { color: colores.texto }]}>Rol a Asignar:</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <TouchableOpacity
+                style={[
+                  styles.chipRolModal,
+                  personalRol === 'encargado' && styles.chipRolModalActivo,
+                  { borderColor: colores.borde },
+                ]}
+                onPress={() => setPersonalRol('encargado')}
+              >
+                <Icono
+                  nombre="shield-outline"
+                  size={16}
+                  color={personalRol === 'encargado' ? '#FFFFFF' : colores.texto}
+                />
+                <Text
+                  style={[
+                    styles.chipRolModalTexto,
+                    personalRol === 'encargado' && styles.chipRolModalTextoActivo,
+                    { color: personalRol === 'encargado' ? '#FFFFFF' : colores.texto },
+                  ]}
+                >
+                  Encargado
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.chipRolModal,
+                  personalRol === 'administrador' && styles.chipRolModalActivo,
+                  { borderColor: colores.borde },
+                ]}
+                onPress={() => setPersonalRol('administrador')}
+              >
+                <Icono
+                  nombre="key-outline"
+                  size={16}
+                  color={personalRol === 'administrador' ? '#FFFFFF' : colores.texto}
+                />
+                <Text
+                  style={[
+                    styles.chipRolModalTexto,
+                    personalRol === 'administrador' && styles.chipRolModalTextoActivo,
+                    { color: personalRol === 'administrador' ? '#FFFFFF' : colores.texto },
+                  ]}
+                >
+                  Administrador
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.label, { color: colores.texto }]}>Nombre completo:</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
+              placeholder="Ej: Marcelo Gómez"
+              placeholderTextColor={colores.textoMuted}
+              value={personalNombre}
+              onChangeText={setPersonalNombre}
+            />
+
+            <Text style={[styles.label, { color: colores.texto }]}>Email institucional o personal:</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
+              placeholder="Ej: marcelo@villaguay.gob.ar"
+              placeholderTextColor={colores.textoMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={personalEmail}
+              onChangeText={setPersonalEmail}
+            />
+
+            <Text style={[styles.label, { color: colores.texto }]}>Teléfono de contacto:</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
+              placeholder="Ej: 3455-401122"
+              placeholderTextColor={colores.textoMuted}
+              keyboardType="phone-pad"
+              value={personalTelefono}
+              onChangeText={setPersonalTelefono}
+            />
+
+            <Text style={[styles.label, { color: colores.texto }]}>Contraseña de acceso:</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
+              placeholder="Mínimo 6 caracteres"
+              placeholderTextColor={colores.textoMuted}
+              secureTextEntry
+              value={personalPassword}
+              onChangeText={setPersonalPassword}
+            />
+
+            <View style={styles.modalBotones}>
+              <TouchableOpacity
+                style={[styles.botonModal, { backgroundColor: colores.borde }]}
+                onPress={() => setModalPersonalVisible(false)}
+                disabled={creandoPersonal}
+              >
+                <Text style={{ color: colores.texto, fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.botonModal, { backgroundColor: Colores.primario }]}
+                onPress={handleCrearPersonal}
+                disabled={creandoPersonal}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+                  {creandoPersonal ? 'Creando...' : 'Crear Usuario'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -818,5 +1059,56 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  tarjetaPersonal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+    gap: 12,
+  },
+  avatarPersonal: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(26, 77, 46, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nombrePersonal: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  badgeMiniRol: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeMiniRolTexto: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  chipRolModal: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  chipRolModalActivo: {
+    backgroundColor: Colores.primario,
+    borderColor: Colores.primario,
+  },
+  chipRolModalTexto: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipRolModalTextoActivo: {
+    fontWeight: '700',
   },
 });

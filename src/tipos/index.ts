@@ -95,6 +95,7 @@ export interface DatosRegistro {
   email: string;
   telefono: string;
   password?: string;
+  rol?: Rol;
 }
 
 export interface RespuestaAuth {

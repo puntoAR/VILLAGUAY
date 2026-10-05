@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { useTema } from '../src/contexto/ThemeContext';
 import { useAuth } from '../src/contexto/AuthContext';
 import { USUARIOS_MOCK } from '../src/mocks/usuarios';
-import { Usuario } from '../src/tipos';
+import { Usuario, Rol } from '../src/tipos';
 import { Icono } from '../src/componentes/Icono';
 import { Colores } from '../src/constantes/tema';
 import { Haptica } from '../src/servicios/haptica';
@@ -49,7 +49,17 @@ export default function PantallaLogin() {
   const [passwordReg, setPasswordReg] = useState<string>('');
   const [passwordConfirmReg, setPasswordConfirmReg] = useState<string>('');
   const [verPasswordReg, setVerPasswordReg] = useState<boolean>(false);
+  const [rolReg, setRolReg] = useState<Rol>('jugador');
   const [cargandoReg, setCargandoReg] = useState<boolean>(false);
+
+  // Navegación segura hacia el sistema principal
+  const navegarAlSistema = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)' as any);
+    }
+  };
 
   // Ejecutar login con credenciales
   const manejarLogin = async () => {
@@ -69,7 +79,7 @@ export default function PantallaLogin() {
     }
 
     await Haptica.confirmacion();
-    router.back();
+    navegarAlSistema();
   };
 
   // Ejecutar registro de nuevo usuario
@@ -105,6 +115,7 @@ export default function PantallaLogin() {
       email: emailReg.trim(),
       telefono: telefonoReg.trim(),
       password: passwordReg,
+      rol: rolReg,
     });
     setCargandoReg(false);
 
@@ -117,8 +128,8 @@ export default function PantallaLogin() {
     await Haptica.confirmacion();
     Alert.alert(
       '¡Bienvenido a Deportes Villaguay! 🏆',
-      'Tu cuenta fue creada exitosamente. Ya podés reservar tus canchas favoritas.',
-      [{ text: 'Comenzar a reservar', onPress: () => router.back() }]
+      `Tu cuenta como ${rolReg.toUpperCase()} fue creada exitosamente. Ya podés comenzar.`,
+      [{ text: 'Comenzar a usar el sistema', onPress: navegarAlSistema }]
     );
   };
 
@@ -128,7 +139,7 @@ export default function PantallaLogin() {
     const exito = await reingresoBiometrico();
     if (exito) {
       await Haptica.confirmacion();
-      router.back();
+      navegarAlSistema();
     } else {
       await Haptica.errorIngreso();
       Alert.alert(
@@ -171,7 +182,7 @@ export default function PantallaLogin() {
   const seleccionarUsuarioDemo = async (u: Usuario) => {
     await Haptica.seleccionSuave();
     await cambiarRolDemo(u.rol);
-    router.back();
+    navegarAlSistema();
   };
 
   return (
@@ -485,6 +496,73 @@ export default function PantallaLogin() {
               </View>
             </View>
 
+            {/* Selector de Perfil / Rol */}
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>
+                Tipo de Cuenta / Rol en el Sistema
+              </Text>
+              <Text style={[styles.subtextoCampo, { color: colores.textoSecundario }]}>
+                Seleccioná el perfil con el que vas a operar en la aplicación:
+              </Text>
+              <View style={styles.contenedorSelectorRoles}>
+                {[
+                  {
+                    rol: 'jugador' as Rol,
+                    titulo: 'Jugador / Vecino',
+                    desc: 'Reserva turnos, cancela y presenta código QR.',
+                    icono: 'football-outline',
+                    color: Colores.primarioClaro,
+                  },
+                  {
+                    rol: 'encargado' as Rol,
+                    titulo: 'Encargado de Predio',
+                    desc: 'Control de accesos (escáner QR) y bloqueos por lluvia.',
+                    icono: 'shield-checkmark-outline',
+                    color: Colores.secundario,
+                  },
+                  {
+                    rol: 'administrador' as Rol,
+                    titulo: 'Dirección de Deportes',
+                    desc: 'Gestión total, fijar precios y reservas fijas.',
+                    icono: 'business-outline',
+                    color: '#6366F1',
+                  },
+                ].map(item => {
+                  const seleccionado = rolReg === item.rol;
+                  return (
+                    <TouchableOpacity
+                      key={item.rol}
+                      style={[
+                        styles.tarjetaRolRegistro,
+                        {
+                          backgroundColor: colores.tarjeta,
+                          borderColor: seleccionado ? item.color : colores.borde,
+                          borderWidth: seleccionado ? 2 : 1,
+                        },
+                      ]}
+                      onPress={() => setRolReg(item.rol)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.iconoRolContenedor, { backgroundColor: item.color + '20' }]}>
+                        <Icono nombre={item.icono} size={20} color={item.color} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.tituloRolRegistro, { color: colores.texto }]}>
+                          {item.titulo}
+                        </Text>
+                        <Text style={[styles.descRolRegistro, { color: colores.textoSecundario }]}>
+                          {item.desc}
+                        </Text>
+                      </View>
+                      {seleccionado && (
+                        <Icono nombre="checkmark-circle" size={20} color={item.color} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Botón de Registro */}
             <TouchableOpacity
               style={[styles.botonPrincipal, { backgroundColor: Colores.primarioClaro, marginTop: 10 }]}
@@ -704,5 +782,36 @@ const styles = StyleSheet.create({
   },
   textoCambiarPestaña: {
     fontSize: 13,
+  },
+  subtextoCampo: {
+    fontSize: 12,
+    marginTop: -2,
+    marginBottom: 4,
+  },
+  contenedorSelectorRoles: {
+    gap: 8,
+  },
+  tarjetaRolRegistro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  iconoRolContenedor: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tituloRolRegistro: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  descRolRegistro: {
+    fontSize: 11,
+    lineHeight: 15,
   },
 });

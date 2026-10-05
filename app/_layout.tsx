@@ -4,9 +4,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTema } from '../src/contexto/ThemeContext';
-import { AuthProvider } from '../src/contexto/AuthContext';
+import { AuthProvider, useAuth } from '../src/contexto/AuthContext';
 import { RedProvider } from '../src/contexto/RedContext';
 import { BannerDesconexion } from '../src/componentes/BannerDesconexion';
+import { EstadoCarga } from '../src/componentes/EstadoCarga';
+import PantallaLogin from './login';
 import { Colores } from '../src/constantes/tema';
 
 // Ocultar alertas flotantes no críticas de Expo Go para ver la interfaz directamente
@@ -14,6 +16,21 @@ LogBox.ignoreAllLogs(true);
 
 function ContenidoPrincipal() {
   const { esOscuro, colores } = useTema();
+  const { usuario, cargando } = useAuth();
+
+  if (cargando) {
+    return <EstadoCarga mensaje="Iniciando sistema de reservas..." />;
+  }
+
+  if (!usuario) {
+    return (
+      <>
+        <StatusBar style={esOscuro ? 'light' : 'dark'} />
+        <BannerDesconexion />
+        <PantallaLogin />
+      </>
+    );
+  }
 
   return (
     <>
