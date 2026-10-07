@@ -106,8 +106,8 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
             ]}
           >
             {reserva.estadoPago === 'pagado'
-              ? `✅ Pagado: $${(reserva.montoTotal ?? espacio?.precioHora ?? 0).toLocaleString('es-AR')}`
-              : `⏳ Por abonar: $${(reserva.montoTotal ?? espacio?.precioHora ?? 0).toLocaleString('es-AR')}`}
+              ? `✅ Pagado: $${(reserva.montoTotal ?? espacio?.precioPorHora ?? 0).toLocaleString('es-AR')}`
+              : `⏳ Por abonar: $${(reserva.montoTotal ?? espacio?.precioPorHora ?? 0).toLocaleString('es-AR')}`}
           </Text>
         </View>
       </View>

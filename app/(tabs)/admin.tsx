@@ -37,7 +37,7 @@ type SeccionAdmin = 'alquileres' | 'agenda' | 'bloqueos' | 'macro' | 'precios' |
 
 export default function PantallaAdmin() {
   const { colores } = useTema();
-  const { usuario, esEncargadoOAdmin, esAdmin, esEncargado, cambiarRolDemo } = useAuth();
+  const { usuario, esEncargadoOAdmin, esAdmin, esEncargado, cambiarRolDemo, cerrarSesion } = useAuth();
   const router = useRouter();
 
   // Pestaña inicial según rol
@@ -334,24 +334,46 @@ export default function PantallaAdmin() {
           </Text>
         </View>
 
-        {/* Botón para alternar rol en desarrollo */}
-        <TouchableOpacity
-          style={[
-            styles.botonAlternarDemo,
-            { backgroundColor: esAdmin ? 'rgba(26,77,46,0.1)' : 'rgba(217,119,6,0.1)' },
-          ]}
-          onPress={() => cambiarRolDemo(esAdmin ? 'encargado' : 'administrador')}
-        >
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: '700',
-              color: esAdmin ? Colores.primario : '#D97706',
+        {/* Controles rápidos de rol y sesión */}
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={[
+              styles.botonAlternarDemo,
+              { backgroundColor: esAdmin ? 'rgba(26,77,46,0.1)' : 'rgba(217,119,6,0.1)' },
+            ]}
+            onPress={() => cambiarRolDemo(esAdmin ? 'encargado' : 'administrador')}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: esAdmin ? Colores.primario : '#D97706',
+              }}
+            >
+              {esAdmin ? 'Ver como Encargado' : 'Ver como Director'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.botonAlternarDemo, { backgroundColor: 'rgba(220,38,38,0.12)' }]}
+            onPress={async () => {
+              Alert.alert('Cerrar Sesión', '¿Deseás salir de tu cuenta?', [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Salir',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await cerrarSesion();
+                    router.replace('/login');
+                  },
+                },
+              ]);
             }}
           >
-            {esAdmin ? 'Ver como Encargado' : 'Ver como Director'}
-          </Text>
-        </TouchableOpacity>
+            <Icono nombre="log-out-outline" size={14} color={Colores.peligro} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: Colores.peligro }}>Salir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ------------------------------------------------------------- */}

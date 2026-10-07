@@ -1,6 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTema } from '../../src/contexto/ThemeContext';
 import { useAuth } from '../../src/contexto/AuthContext';
 import { Icono } from '../../src/componentes/Icono';
@@ -8,8 +9,10 @@ import { Colores } from '../../src/constantes/tema';
 
 export default function TabsLayout() {
   const { esOscuro, colores } = useTema();
-  const { usuario, esEncargadoOAdmin } = useAuth();
+  const { usuario, esEncargadoOAdmin, cerrarSesion } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const alturaInferior = Math.max(insets.bottom, 12);
 
   return (
     <Tabs
@@ -32,7 +35,31 @@ export default function TabsLayout() {
                   : 'rgba(255, 255, 255, 0.22)',
               },
             ]}
-            onPress={() => router.push('/login')}
+            onPress={() => {
+              if (usuario) {
+                Alert.alert(
+                  `Sesión: ${usuario.nombre}`,
+                  `Rol: ${usuario.rol.toUpperCase()}\n¿Qué deseás hacer?`,
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Cambiar de Cuenta',
+                      onPress: () => router.push('/login'),
+                    },
+                    {
+                      text: 'Cerrar Sesión',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await cerrarSesion();
+                        router.replace('/login');
+                      },
+                    },
+                  ]
+                );
+              } else {
+                router.push('/login');
+              }
+            }}
             activeOpacity={0.7}
           >
             <Icono
@@ -53,9 +80,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: esOscuro ? Colores.oscuro.tarjeta : '#FFFFFF',
           borderTopColor: colores.borde,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 60 + alturaInferior,
+          paddingBottom: alturaInferior,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: Colores.acento,
         tabBarInactiveTintColor: colores.textoMuted,
@@ -128,7 +155,6 @@ export default function TabsLayout() {
               color={color}
             />
           ),
-          tabBarBadge: esEncargadoOAdmin ? (usuario?.rol === 'encargado' ? 'Predio' : 'Macro') : undefined,
         }}
       />
 

@@ -1,6 +1,6 @@
 import { obtenerBD } from '../basedatos/sqlite';
 import { Reserva, RespuestaExito, RespuestaError, MetricasMacro, EstadoPago } from '../tipos';
-import { crearExito, crearError } from './api';
+import { crearExito, crearError, esError } from './api';
 import { Haptica } from './haptica';
 import { NotificacionesServicio } from './notificaciones';
 import { RESERVAS_MOCK } from '../mocks/reservas';
@@ -83,12 +83,12 @@ export const ReservasServicio = {
           nuevaReserva.cantidadPersonas,
           nuevaReserva.codigoQr,
           nuevaReserva.estado,
-          nuevaReserva.ingresoEn,
+          nuevaReserva.ingresoEn || null,
           nuevaReserva.creadaEn,
           nuevaReserva.cancelableHasta,
           nuevaReserva.conLuz ? 1 : 0,
-          nuevaReserva.montoTotal,
-          nuevaReserva.estadoPago,
+          nuevaReserva.montoTotal || 0,
+          nuevaReserva.estadoPago || 'pendiente',
           nuevaReserva.nombreUsuario || null,
           nuevaReserva.telefonoUsuario || null,
           nuevaReserva.nombreEspacio || null,
@@ -366,7 +366,7 @@ export const ReservasServicio = {
       let canceladas = 0;
       let ausentes = 0;
 
-      lista.forEach(r => {
+      lista.forEach((r: Reserva) => {
         if (r.estado !== 'cancelada') {
           const monto = r.montoTotal || 12000;
           recaudacionTotal += monto;
@@ -390,7 +390,7 @@ export const ReservasServicio = {
         totalReservas: lista.length,
         tasaOcupacion: 78,
         reservasPorDeporte: [
-          { deporte: 'Fútbol (Sintético y 11)', cantidad: Math.max(12, lista.filter(r => r.espacioId.includes('01') || r.espacioId.includes('02') || r.espacioId.includes('03')).length * 4), color: '#16A34A' },
+          { deporte: 'Fútbol (Sintético y 11)', cantidad: Math.max(12, lista.filter((r: Reserva) => r.espacioId.includes('01') || r.espacioId.includes('02') || r.espacioId.includes('03')).length * 4), color: '#16A34A' },
           { deporte: 'Gimnasio Multiuso', cantidad: 9, color: '#D97706' },
           { deporte: 'Pádel / Tenis Berduc', cantidad: 6, color: '#2563EB' },
           { deporte: 'Básquetbol', cantidad: 4, color: '#9333EA' },

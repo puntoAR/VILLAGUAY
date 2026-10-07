@@ -27,7 +27,7 @@ export default function PantallaPerfil() {
         style: 'destructive',
         onPress: async () => {
           await cerrarSesion();
-          Alert.alert('Sesión cerrada', 'Has cerrado sesión correctamente.');
+          router.replace('/login');
         },
       },
     ]);

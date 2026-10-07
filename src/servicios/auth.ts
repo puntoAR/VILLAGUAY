@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Platform } from 'react-native';
-import { Usuario, DatosRegistro, RespuestaAuth, RespuestaExito, RespuestaError } from '../tipos';
+import { Usuario, DatosRegistro, RespuestaAuth, RespuestaExito, RespuestaError, Rol } from '../tipos';
 import { USUARIOS_MOCK } from '../mocks/usuarios';
 import { PreferenciasKV } from '../basedatos/kvstore';
 import { obtenerBD } from '../basedatos/sqlite';
@@ -95,9 +95,9 @@ export const AuthServicio = {
       const encontradoMock = USUARIOS_MOCK.find(u => u.id === id);
       if (encontradoMock) return encontradoMock;
 
-      return USUARIOS_MOCK[0];
+      return null;
     } catch {
-      return USUARIOS_MOCK[0];
+      return null;
     }
   },
 
@@ -395,7 +395,7 @@ export const AuthServicio = {
           JSON.stringify(nuevoUsuario.espaciosFavoritos),
           nuevoUsuario.cancelacionesTardias,
           nuevoUsuario.ausencias,
-          nuevoUsuario.password,
+          nuevoUsuario.password || null,
         ]
       );
 

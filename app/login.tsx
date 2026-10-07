@@ -31,6 +31,7 @@ export default function PantallaLogin() {
     reingresoBiometrico,
     cambiarRolDemo,
     soportaBiometria,
+    cerrarSesion,
   } = useAuth();
 
   // Control de pestaña: 'login' | 'registro'
@@ -202,6 +203,43 @@ export default function PantallaLogin() {
             Portal Municipal de Reservas y Gestión Deportiva
           </Text>
         </View>
+
+        {/* Banner de sesión activa si el usuario ya está autenticado */}
+        {usuario && (
+          <View style={[styles.tarjetaSesionActiva, { backgroundColor: colores.tarjeta, borderColor: Colores.acento }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: Colores.acento, letterSpacing: 0.5 }}>
+                SESIÓN ACTIVA ACTUAL:
+              </Text>
+              <Text style={[styles.nombreSesionActiva, { color: colores.texto }]}>
+                {usuario.nombre}
+              </Text>
+              <Text style={{ fontSize: 12, color: Colores.primarioClaro, fontWeight: '700' }}>
+                Rol: {usuario.rol.toUpperCase()}
+              </Text>
+            </View>
+
+            <View style={{ gap: 6 }}>
+              <TouchableOpacity
+                style={[styles.botonContinuarMini, { backgroundColor: Colores.primarioClaro }]}
+                onPress={() => router.replace('/(tabs)' as any)}
+              >
+                <Text style={styles.botonContinuarMiniTexto}>Continuar ➔</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.botonCerrarSesionMini}
+                onPress={async () => {
+                  await cerrarSesion();
+                  Alert.alert('Sesión cerrada', 'Has cerrado la sesión. Ahora podés ingresar con otra cuenta o registrarte.');
+                }}
+              >
+                <Icono nombre="log-out-outline" size={14} color={Colores.peligro} />
+                <Text style={styles.botonCerrarSesionMiniTexto}>Salir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Selector de pestañas: Iniciar Sesión / Crear Cuenta */}
         <View style={[styles.selectorPestañas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
@@ -756,5 +794,46 @@ const styles = StyleSheet.create({
   descRolRegistro: {
     fontSize: 11,
     lineHeight: 15,
+  },
+  tarjetaSesionActiva: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 16,
+    gap: 12,
+  },
+  nombreSesionActiva: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  botonContinuarMini: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  botonContinuarMiniTexto: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  botonCerrarSesionMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colores.peligro,
+    gap: 4,
+  },
+  botonCerrarSesionMiniTexto: {
+    color: Colores.peligro,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

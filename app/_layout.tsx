@@ -29,11 +29,8 @@ function ProtectorRutas() {
     const enLogin = segments[0] === 'login';
 
     if (!usuario && !enLogin) {
-      // Si no hay usuario y no está en login, redirige de inmediato a la pantalla de login
+      // Si no hay usuario autenticado y no está en login, redirige a la pantalla de login
       router.replace('/login');
-    } else if (usuario && enLogin) {
-      // Si ya está autenticado y sigue en login, ingresa a las canchas
-      router.replace('/(tabs)');
     }
   }, [usuario, cargando, segments]);
 
