@@ -16,7 +16,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
       'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Obligatorio calzado para sintético (sin tapones de aluminio). Cuidar las redes perimetrales.',
     activo: true
   },
@@ -35,7 +35,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
       'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=800&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'No se permite calzado con tapones de aluminio. Prohibido fumar en el predio.',
     activo: true
   },
@@ -53,7 +53,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Sujeto a condiciones climáticas. No usar con barro para preservar el césped natural.',
     activo: true
   },
@@ -71,7 +71,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Exclusivo zapatillas de básquet con suela limpia de goma (no abrasiva).',
     activo: true
   },
@@ -107,7 +107,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Calzado deportivo limpio. Retirar objetos punzantes antes de ingresar.',
     activo: true
   },
@@ -125,7 +125,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Prioridad clubes federados y escuelas municipales. Prohibido alimentos.',
     activo: true
   },
@@ -143,7 +143,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Pasar la esterilla y regar el polvo de ladrillo al finalizar el turno.',
     activo: true
   },
@@ -161,7 +161,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Obligatorio calzado plano para polvo de ladrillo.',
     activo: true
   },
@@ -197,7 +197,7 @@ export const ESPACIOS_MOCK: Espacio[] = [
     imagenes: [
       'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800&auto=format&fit=crop'
     ],
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+    videoUrl: 'local:recorrido_espacio',
     reglas: 'Solo horario diurno. Dejar la cancha libre de botellas o residuos.',
     activo: true
   }

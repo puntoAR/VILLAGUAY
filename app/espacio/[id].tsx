@@ -164,8 +164,18 @@ export default function DetalleEspacio() {
           </View>
 
           {/* Video de recorrido (expo-video obligatorio) */}
-          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Video de la Cancha</Text>
-          <ReproductorVideo videoUrl={espacio.videoUrl} tituloEspacio={espacio.nombre} />
+          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>
+            {espacio.nombre.toLowerCase().includes('gimnasio')
+              ? 'Video del Gimnasio'
+              : espacio.nombre.toLowerCase().includes('pileta') || espacio.nombre.toLowerCase().includes('natatorio')
+              ? 'Video del Natatorio'
+              : 'Video de la Cancha'}
+          </Text>
+          <ReproductorVideo
+            videoUrl={espacio.videoUrl}
+            tituloEspacio={espacio.nombre}
+            esGimnasio={espacio.nombre.toLowerCase().includes('gimnasio')}
+          />
 
           {/* Reglas del lugar */}
           <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Reglamento de Uso</Text>

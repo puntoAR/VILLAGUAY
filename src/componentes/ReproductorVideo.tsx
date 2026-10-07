@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTema } from '../contexto/ThemeContext';
 import { Icono } from './Icono';
 import { Colores } from '../constantes/tema';
 
+const VIDEO_GENERICO_LOCAL = require('../../assets/videos/recorrido_espacio.mp4');
+
 interface Props {
   videoUrl: string | null;
   tituloEspacio: string;
+  esGimnasio?: boolean;
 }
 
-export const ReproductorVideo: React.FC<Props> = ({ videoUrl, tituloEspacio }) => {
+export const ReproductorVideo: React.FC<Props> = ({ videoUrl, tituloEspacio, esGimnasio }) => {
   const { colores } = useTema();
   const [reproduciendo, setReproduciendo] = useState(false);
   const [silenciado, setSilenciado] = useState(true);
@@ -21,18 +24,48 @@ export const ReproductorVideo: React.FC<Props> = ({ videoUrl, tituloEspacio }) =
         <View style={styles.circuloSinVideo}>
           <Icono nombre="videocam-off-outline" size={32} color={colores.textoMuted} />
         </View>
-        <Text style={[styles.tituloSinVideo, { color: colores.texto }]}>Sin video disponible</Text>
+        <Text style={[styles.tituloSinVideo, { color: colores.texto }]}>
+          {esGimnasio ? 'Sin video del gimnasio' : 'Sin video de la cancha'}
+        </Text>
         <Text style={[styles.descripcionSinVideo, { color: colores.textoSecundario }]}>
-          Este espacio deportivo aún no cuenta con un clip de recorrido grabado por la administración.
+          {esGimnasio
+            ? 'Este gimnasio aún no cuenta con un clip de recorrido grabado por la administración.'
+            : 'Este espacio deportivo aún no cuenta con un clip de recorrido grabado por la administración.'}
         </Text>
       </View>
     );
   }
 
-  const player = useVideoPlayer(videoUrl, p => {
+  // Si es local o la URL rota de google, usamos el video de 6 segundos generado en assets
+  const fuenteFinal =
+    videoUrl === 'local:recorrido_espacio' ||
+    videoUrl.includes('commondatastorage.googleapis.com')
+      ? VIDEO_GENERICO_LOCAL
+      : videoUrl;
+
+  const player = useVideoPlayer(fuenteFinal, p => {
     p.loop = true;
     p.muted = true;
+    p.play();
   });
+
+  useEffect(() => {
+    if (!player) return;
+    try {
+      const sub = player.addListener?.('playingChange', (event: any) => {
+        setReproduciendo(Boolean(event?.isPlaying));
+      });
+      const muteSub = player.addListener?.('mutedChange', (event: any) => {
+        setSilenciado(Boolean(event?.isMuted));
+      });
+      return () => {
+        sub?.remove?.();
+        muteSub?.remove?.();
+      };
+    } catch {
+      // Ignorar si no está soportado en la plataforma actual
+    }
+  }, [player]);
 
   const alternarPlay = () => {
     if (!player) return;
@@ -51,12 +84,20 @@ export const ReproductorVideo: React.FC<Props> = ({ videoUrl, tituloEspacio }) =
     setSilenciado(player.muted);
   };
 
+  const tituloHeader = esGimnasio
+    ? 'Recorrido del Gimnasio (6s)'
+    : 'Recorrido de la Cancha (6s)';
+
+  const pieTexto = esGimnasio
+    ? 'Mirá el estado del parquet flotante, aros y demarcaciones antes de reservar.'
+    : 'Mirá el estado del piso, las líneas y redes antes de reservar.';
+
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
       <View style={styles.encabezado}>
         <Icono nombre="videocam-outline" size={18} color={Colores.primarioClaro} />
         <Text style={[styles.tituloEncabezado, { color: colores.texto }]}>
-          Recorrido de la Cancha (30s)
+          {tituloHeader}
         </Text>
       </View>
 
@@ -66,33 +107,50 @@ export const ReproductorVideo: React.FC<Props> = ({ videoUrl, tituloEspacio }) =
           player={player}
           fullscreenOptions={{ enable: true }}
           allowsPictureInPicture
+          nativeControls={true}
+          contentFit="cover"
         />
 
-        {/* Controles visibles de reproducción requeridos por la cátedra */}
+        {/* Botón flotante central de Play cuando está pausado */}
+        {!reproduciendo && (
+          <TouchableOpacity
+            style={styles.overlayPlayCentro}
+            onPress={alternarPlay}
+            activeOpacity={0.8}
+          >
+            <View style={styles.circuloPlayCentro}>
+              <Icono nombre="play" size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.textoPlayCentro}>Tocar para reproducir</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Barra inferior de controles rápidos */}
         <View style={styles.barraControles}>
           <TouchableOpacity style={styles.botonControl} onPress={alternarPlay}>
             <Icono
               nombre={reproduciendo ? 'pause' : 'play'}
-              size={22}
+              size={20}
               color="#FFFFFF"
             />
           </TouchableOpacity>
 
           <Text style={styles.tiempoTexto}>
-            {reproduciendo ? 'En reproducción' : 'Pausado'}
+            {reproduciendo ? '▶ 00:06 (Loop)' : '⏸ Pausado'}
           </Text>
 
           <TouchableOpacity style={styles.botonControl} onPress={alternarMute}>
             <Icono
               nombre={silenciado ? 'volume-mute-outline' : 'volume-high-outline'}
-              size={20}
+              size={18}
               color="#FFFFFF"
             />
           </TouchableOpacity>
         </View>
       </View>
+
       <Text style={[styles.pieVideo, { color: colores.textoMuted }]}>
-        Mirá el estado del piso, las líneas y el desgaste del césped antes de reservar.
+        {pieTexto}
       </Text>
     </View>
   );
@@ -179,5 +237,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  overlayPlayCentro: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  circuloPlayCentro: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colores.primarioClaro,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  textoPlayCentro: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });

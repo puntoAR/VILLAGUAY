@@ -102,6 +102,14 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
     // Si ya existe la columna, SQLite arroja error que capturamos de forma segura
   }
 
+  try {
+    await db.execAsync(
+      "UPDATE espacios SET videoUrl = 'local:recorrido_espacio' WHERE videoUrl LIKE '%commondatastorage.googleapis.com%';"
+    );
+  } catch {
+    // ignorar si no aplica
+  }
+
   // Sembrar datos iniciales si no existen
   const countEspacios = await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) as total FROM espacios');
   if (!countEspacios || countEspacios.total === 0) {
