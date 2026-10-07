@@ -53,11 +53,7 @@ export default function PantallaLogin() {
 
   // Navegación segura hacia el sistema principal
   const navegarAlSistema = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)' as any);
-    }
+    router.replace('/(tabs)' as any);
   };
 
   // Ejecutar login con credenciales

@@ -1,15 +1,20 @@
 import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const esExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 // Importación defensiva compatible con Expo Go (SDK 53/54) y APK Standalone (EAS Build)
 let Notifications: typeof import('expo-notifications') | null = null;
-try {
-  Notifications = require('expo-notifications');
-} catch (error) {
-  // En Expo Go (SDK 53/54) las notificaciones push nativas están restringidas por Expo
+if (!esExpoGo && Platform.OS !== 'web') {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (error) {
+    // En Expo Go las notificaciones remotas nativas están restringidas
+  }
 }
 
-// Configurar el handler solo si el módulo está disponible
-if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
+// Configurar el handler solo si no estamos en Expo Go y el módulo está disponible
+if (!esExpoGo && Notifications && typeof Notifications.setNotificationHandler === 'function') {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -21,7 +26,7 @@ if (Notifications && typeof Notifications.setNotificationHandler === 'function')
       }),
     });
   } catch (e) {
-    console.warn('[Notificaciones] No se pudo inicializar handler:', e);
+    // Silenciar error en modo desarrollo
   }
 }
 
