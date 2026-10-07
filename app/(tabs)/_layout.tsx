@@ -98,6 +98,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="mis-reservas"
         options={{
+          href: esEncargadoOAdmin ? null : undefined,
           title: 'Mis Turnos',
           headerTitle: 'Mis Reservas',
           tabBarIcon: ({ color, focused }) => (
@@ -113,16 +114,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="admin"
         options={{
-          title: 'Gestión',
-          headerTitle: 'Panel de Encargado y Admin',
+          href: esEncargadoOAdmin ? undefined : null,
+          title: usuario?.rol === 'encargado' ? 'Predio' : 'Dirección',
+          headerTitle: usuario?.rol === 'encargado' ? 'Control Operativo de Predio' : 'Dirección de Deportes Villaguay',
           tabBarIcon: ({ color, focused }) => (
             <Icono
-              nombre={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
+              nombre={
+                usuario?.rol === 'encargado'
+                  ? (focused ? 'clipboard' : 'clipboard-outline')
+                  : (focused ? 'analytics' : 'analytics-outline')
+              }
               size={22}
               color={color}
             />
           ),
-          tabBarBadge: esEncargadoOAdmin ? 'Admin' : undefined,
+          tabBarBadge: esEncargadoOAdmin ? (usuario?.rol === 'encargado' ? 'Predio' : 'Macro') : undefined,
         }}
       />
 

@@ -8,12 +8,23 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Linking,
 } from 'react-native';
-import { Espacio, ReservaFija, BloqueoMantenimiento, Turno, Usuario, Rol } from '../../src/tipos';
+import {
+  Espacio,
+  ReservaFija,
+  BloqueoMantenimiento,
+  Turno,
+  Usuario,
+  Rol,
+  Reserva,
+  MetricasMacro,
+} from '../../src/tipos';
 import { EspaciosServicio } from '../../src/servicios/espacios';
 import { TurnosServicio } from '../../src/servicios/turnos';
 import { BloqueosServicio } from '../../src/servicios/bloqueos';
 import { ReservasFijasServicio } from '../../src/servicios/fijas';
+import { ReservasServicio } from '../../src/servicios/reservas';
 import { AuthServicio } from '../../src/servicios/auth';
 import { esError } from '../../src/servicios/api';
 import { useAuth } from '../../src/contexto/AuthContext';
@@ -22,40 +33,58 @@ import { Icono } from '../../src/componentes/Icono';
 import { Colores } from '../../src/constantes/tema';
 import { useRouter } from 'expo-router';
 
+type SeccionAdmin = 'alquileres' | 'agenda' | 'bloqueos' | 'macro' | 'precios' | 'fijas' | 'personal';
+
 export default function PantallaAdmin() {
   const { colores } = useTema();
-  const { usuario, esEncargadoOAdmin, cambiarRolDemo } = useAuth();
+  const { usuario, esEncargadoOAdmin, esAdmin, esEncargado, cambiarRolDemo } = useAuth();
   const router = useRouter();
 
-  const [seccionActiva, setSeccionActiva] = useState<'agenda' | 'bloqueos' | 'fijas' | 'precios' | 'personal'>('agenda');
+  // Pestaña inicial según rol
+  const [seccionActiva, setSeccionActiva] = useState<SeccionAdmin>(
+    usuario?.rol === 'administrador' ? 'macro' : 'alquileres'
+  );
+
+  // Sincronizar pestaña si cambia el rol
+  useEffect(() => {
+    if (usuario?.rol === 'administrador') {
+      if (['alquileres', 'bloqueos'].includes(seccionActiva)) {
+        setSeccionActiva('macro');
+      }
+    } else if (usuario?.rol === 'encargado') {
+      if (['macro', 'precios', 'fijas', 'personal'].includes(seccionActiva)) {
+        setSeccionActiva('alquileres');
+      }
+    }
+  }, [usuario?.rol]);
+
+  // Datos operativos del predio (Encargado)
+  const [alquileres, setAlquileres] = useState<Reserva[]>([]);
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [bloqueos, setBloqueos] = useState<BloqueoMantenimiento[]>([]);
-  const [fijas, setFijas] = useState<ReservaFija[]>([]);
-
-  // Agenda del día
-  const [espacioAgendaId, setEspacioAgendaId] = useState<string>('esp-01');
   const [turnosAgenda, setTurnosAgenda] = useState<Turno[]>([]);
+  const [espacioAgendaId, setEspacioAgendaId] = useState<string>('esp-01');
 
-  // Modal para nuevo bloqueo
+  // Datos macro y estratégicos (Director)
+  const [metricas, setMetricas] = useState<MetricasMacro | null>(null);
+  const [fijas, setFijas] = useState<ReservaFija[]>([]);
+  const [precioEspacioId, setPrecioEspacioId] = useState('esp-01');
+  const [nuevoPrecio, setNuevoPrecio] = useState('12000');
+  const [personal, setPersonal] = useState<Usuario[]>([]);
+
+  // Modales
   const [modalBloqueoVisible, setModalBloqueoVisible] = useState(false);
   const [bloqueoEspacioId, setBloqueoEspacioId] = useState('esp-01');
   const [bloqueoFecha, setBloqueoFecha] = useState(new Date().toISOString().split('T')[0]);
   const [bloqueoMotivo, setBloqueoMotivo] = useState('');
 
-  // Modal para nueva reserva fija
   const [modalFijaVisible, setModalFijaVisible] = useState(false);
   const [fijaEspacioId, setFijaEspacioId] = useState('esp-02');
   const [fijaTitular, setFijaTitular] = useState('');
-  const [fijaDia, setFijaDia] = useState<number>(2); // Martes
+  const [fijaDia, setFijaDia] = useState<number>(2);
   const [fijaInicio, setFijaInicio] = useState('21:00');
   const [fijaFin, setFijaFin] = useState('22:00');
 
-  // Editor de precio
-  const [precioEspacioId, setPrecioEspacioId] = useState('esp-01');
-  const [nuevoPrecio, setNuevoPrecio] = useState('12000');
-
-  // Gestión de Personal Administrativo (Encargados y Administradores)
-  const [personal, setPersonal] = useState<Usuario[]>([]);
   const [modalPersonalVisible, setModalPersonalVisible] = useState(false);
   const [personalNombre, setPersonalNombre] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
@@ -65,6 +94,7 @@ export default function PantallaAdmin() {
   const [creandoPersonal, setCreandoPersonal] = useState(false);
 
   const cargarDatos = async () => {
+    // Espacios comunes
     const respEsp = await EspaciosServicio.obtenerEspacios();
     if (!esError(respEsp)) {
       setEspacios(respEsp.datos);
@@ -73,9 +103,21 @@ export default function PantallaAdmin() {
       }
     }
 
+    // Datos del encargado
+    const respAlq = await ReservasServicio.obtenerAlquileresPredio();
+    if (!esError(respAlq)) {
+      setAlquileres(respAlq.datos);
+    }
+
     const respBloq = await BloqueosServicio.obtenerBloqueos();
     if (!esError(respBloq)) {
       setBloqueos(respBloq.datos);
+    }
+
+    // Datos del director de deportes
+    const respMet = await ReservasServicio.obtenerMetricasMacro();
+    if (!esError(respMet)) {
+      setMetricas(respMet.datos);
     }
 
     const respFij = await ReservasFijasServicio.obtenerFijas();
@@ -101,7 +143,24 @@ export default function PantallaAdmin() {
     }
   }, [espacioAgendaId]);
 
-  // Requisito 2 & 4: El encargado reingresa con biometría (huella/rostro) antes de escanear
+  // Acción de cobro en puerta para el encargado
+  const handleCambiarPago = async (reserva: Reserva) => {
+    const nuevoEstado = reserva.estadoPago === 'pagado' ? 'pendiente' : 'pagado';
+    const resp = await ReservasServicio.cambiarEstadoPago(reserva.id, nuevoEstado);
+    if (!esError(resp)) {
+      Alert.alert(
+        nuevoEstado === 'pagado' ? '¡Cobro Registrado!' : 'Cobro Revertido',
+        nuevoEstado === 'pagado'
+          ? `Se cobraron $${(reserva.montoTotal || 12000).toLocaleString('es-AR')} a ${reserva.nombreUsuario || 'el vecino'}.`
+          : 'El estado se devolvió a pendiente de cobro.'
+      );
+      cargarDatos();
+    } else {
+      Alert.alert('Error', resp.error.mensaje);
+    }
+  };
+
+  // Escanear puerta con autenticación biométrica previa
   const abrirEscanerConBiometria = async () => {
     const auth = await AuthServicio.autenticarConBiometria(
       'Validar identidad con huella o rostro para operar el escáner de puerta'
@@ -109,7 +168,7 @@ export default function PantallaAdmin() {
     if (auth.exito) {
       router.push('/escaner' as any);
     } else {
-      Alert.alert('Autenticación fallida', auth.mensajeError || 'No se pudo verificar la huella.');
+      Alert.alert('Autenticación biométrica', auth.mensajeError || 'No se pudo verificar la huella.');
     }
   };
 
@@ -123,7 +182,7 @@ export default function PantallaAdmin() {
     const resp = await BloqueosServicio.crearBloqueo({
       espacioId: bloqueoEspacioId,
       fecha: bloqueoFecha,
-      inicio: null, // Día completo
+      inicio: null,
       fin: null,
       motivo: bloqueoMotivo,
       nombreEspacio: esp?.nombre,
@@ -217,87 +276,328 @@ export default function PantallaAdmin() {
     }
   };
 
-  return (
-    <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      {/* Selector de Rol Demo si está como jugador */}
-      {!esEncargadoOAdmin && (
-        <View style={styles.bannerRol}>
-          <Text style={styles.bannerRolTexto}>
-            Estás en modo Jugador. Cambiá a Encargado (Marcelo) o Admin para gestionar:
+  // Si no es encargado ni admin (ej. jugador o sin sesión)
+  if (!esEncargadoOAdmin) {
+    return (
+      <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+        <View style={[styles.tarjetaRestringida, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <Icono nombre="lock-closed" size={48} color={Colores.peligro} />
+          <Text style={[styles.tituloRestringido, { color: colores.texto }]}>
+            Acceso Exclusivo para Personal Municipal
           </Text>
-          <View style={styles.filaBotonesRol}>
+          <Text style={[styles.subtituloRestringido, { color: colores.textoSecundario }]}>
+            Esta sección está reservada para el Encargado del Predio (Marcelo) y la Dirección de Deportes de Villaguay (Nahuel).
+          </Text>
+
+          <View style={styles.cajaDemoSwitch}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colores.texto, marginBottom: 8 }}>
+              Modo Demostración / Pruebas:
+            </Text>
             <TouchableOpacity
-              style={styles.botonRol}
+              style={[styles.botonDemo, { backgroundColor: '#1A4D2E' }]}
               onPress={() => cambiarRolDemo('encargado')}
             >
-              <Text style={styles.botonRolTexto}>Soy Marcelo (Encargado)</Text>
+              <Icono nombre="id-card" size={18} color="#FFFFFF" />
+              <Text style={styles.botonDemoTexto}>Probar como Marcelo (Encargado)</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.botonRol}
+              style={[styles.botonDemo, { backgroundColor: '#D97706', marginTop: 8 }]}
               onPress={() => cambiarRolDemo('administrador')}
             >
-              <Text style={styles.botonRolTexto}>Soy Nahuel (Director)</Text>
+              <Icono nombre="shield-checkmark" size={18} color="#FFFFFF" />
+              <Text style={styles.botonDemoTexto}>Probar como Nahuel (Director Deportivo)</Text>
             </TouchableOpacity>
           </View>
         </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+      {/* Barra de cabecera con perfil actual y selector de cambio rápido */}
+      <View style={[styles.barraCabeceraRol, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icono
+              nombre={esAdmin ? 'shield-checkmark' : 'id-card'}
+              size={18}
+              color={esAdmin ? '#D97706' : Colores.primarioClaro}
+            />
+            <Text style={[styles.tituloRolActual, { color: colores.texto }]}>
+              {esAdmin ? 'Dirección de Deportes' : 'Encargado de Predio'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: colores.textoSecundario }}>
+            Usuario: {usuario?.nombre} ({usuario?.rol?.toUpperCase()})
+          </Text>
+        </View>
+
+        {/* Botón para alternar rol en desarrollo */}
+        <TouchableOpacity
+          style={[
+            styles.botonAlternarDemo,
+            { backgroundColor: esAdmin ? 'rgba(26,77,46,0.1)' : 'rgba(217,119,6,0.1)' },
+          ]}
+          onPress={() => cambiarRolDemo(esAdmin ? 'encargado' : 'administrador')}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              color: esAdmin ? Colores.primario : '#D97706',
+            }}
+          >
+            {esAdmin ? 'Ver como Encargado' : 'Ver como Director'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 1. SECCIÓN EXCLUSIVA ENCARGADO: BOTÓN BIOMÉTRICO ESCÁNER PUERTA */}
+      {/* ------------------------------------------------------------- */}
+      {esEncargado && (
+        <View style={styles.seccionAccionPrincipal}>
+          <TouchableOpacity
+            style={styles.botonEscaner}
+            activeOpacity={0.85}
+            onPress={abrirEscanerConBiometria}
+          >
+            <Icono nombre="qr-code" size={28} color="#1A4D2E" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.botonEscanerTitulo}>Control de Ingreso en Puerta</Text>
+              <Text style={styles.botonEscanerSub}>Escanear código QR de la reserva (con huella dactilar)</Text>
+            </View>
+            <Icono nombre="finger-print-outline" size={26} color="#1A4D2E" />
+          </TouchableOpacity>
+        </View>
       )}
 
-      {/* Botón Escanear QR en la puerta con Biometría */}
-      <View style={styles.seccionAccionPrincipal}>
-        <TouchableOpacity
-          style={styles.botonEscaner}
-          activeOpacity={0.85}
-          onPress={abrirEscanerConBiometria}
-        >
-          <Icono nombre="qr-code" size={28} color="#1A4D2E" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.botonEscanerTitulo}>Control de Ingreso en Puerta</Text>
-            <Text style={styles.botonEscanerSub}>Escanear código QR de la reserva (con huella)</Text>
-          </View>
-          <Icono nombre="finger-print-outline" size={26} color="#1A4D2E" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Pestañas del Panel */}
+      {/* ------------------------------------------------------------- */}
+      {/* BARRA DE PESTAÑAS SEGREGADA POR ROL */}
+      {/* ------------------------------------------------------------- */}
       <View style={[styles.barraPestanas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-        <TouchableOpacity
-          style={[styles.pestana, seccionActiva === 'agenda' && styles.pestanaActiva]}
-          onPress={() => setSeccionActiva('agenda')}
-        >
-          <Text style={[styles.pestanaTexto, seccionActiva === 'agenda' && styles.pestanaTextoActivo]}>Agenda</Text>
-        </TouchableOpacity>
+        {esEncargado ? (
+          <>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'alquileres' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('alquileres')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'alquileres' && styles.pestanaTextoActivo]}>
+                Alquileres ({alquileres.length})
+              </Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.pestana, seccionActiva === 'bloqueos' && styles.pestanaActiva]}
-          onPress={() => setSeccionActiva('bloqueos')}
-        >
-          <Text style={[styles.pestanaTexto, seccionActiva === 'bloqueos' && styles.pestanaTextoActivo]}>Lluvia/Manten.</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'agenda' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('agenda')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'agenda' && styles.pestanaTextoActivo]}>
+                Agenda Hoy
+              </Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.pestana, seccionActiva === 'fijas' && styles.pestanaActiva]}
-          onPress={() => setSeccionActiva('fijas')}
-        >
-          <Text style={[styles.pestanaTexto, seccionActiva === 'fijas' && styles.pestanaTextoActivo]}>Fijas</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'bloqueos' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('bloqueos')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'bloqueos' && styles.pestanaTextoActivo]}>
+                Lluvia / Mant.
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'macro' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('macro')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'macro' && styles.pestanaTextoActivo]}>
+                Tablero Macro
+              </Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.pestana, seccionActiva === 'precios' && styles.pestanaActiva]}
-          onPress={() => setSeccionActiva('precios')}
-        >
-          <Text style={[styles.pestanaTexto, seccionActiva === 'precios' && styles.pestanaTextoActivo]}>Precios</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'precios' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('precios')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'precios' && styles.pestanaTextoActivo]}>
+                Tarifas
+              </Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.pestana, seccionActiva === 'personal' && styles.pestanaActiva]}
-          onPress={() => setSeccionActiva('personal')}
-        >
-          <Text style={[styles.pestanaTexto, seccionActiva === 'personal' && styles.pestanaTextoActivo]}>Personal</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'fijas' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('fijas')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'fijas' && styles.pestanaTextoActivo]}>
+                Fijas Clubes
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.pestana, seccionActiva === 'personal' && styles.pestanaActiva]}
+              onPress={() => setSeccionActiva('personal')}
+            >
+              <Text style={[styles.pestanaTexto, seccionActiva === 'personal' && styles.pestanaTextoActivo]}>
+                Personal ({personal.length})
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
-      {/* 1. SECCIÓN AGENDA DEL DÍA */}
-      {seccionActiva === 'agenda' && (
+      {/* ============================================================= */}
+      {/* ROL ENCARGADO: 1. QUIÉNES ALQUILARON & COBRO EN PUERTA */}
+      {/* ============================================================= */}
+      {esEncargado && seccionActiva === 'alquileres' && (
+        <View style={styles.seccionContenido}>
+          <View style={styles.filaTituloBoton}>
+            <View>
+              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Quiénes Alquilaron</Text>
+              <Text style={{ color: colores.textoSecundario, fontSize: 12 }}>
+                Control de jugadores, canon nocturno y cobro en puerta
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.botonRefrescar, { borderColor: colores.borde }]}
+              onPress={cargarDatos}
+            >
+              <Icono nombre="refresh" size={16} color={colores.texto} />
+            </TouchableOpacity>
+          </View>
+
+          {alquileres.length === 0 ? (
+            <View style={[styles.tarjetaItem, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+              <Text style={{ color: colores.textoSecundario, textAlign: 'center', width: '100%', padding: 12 }}>
+                No hay alquileres activos registrados por el momento.
+              </Text>
+            </View>
+          ) : (
+            alquileres.map(r => {
+              const estaPagado = r.estadoPago === 'pagado';
+              const monto = r.montoTotal || 12000;
+              const esp = espacios.find(e => e.id === r.espacioId);
+
+              return (
+                <View
+                  key={r.id}
+                  style={[
+                    styles.tarjetaAlquiler,
+                    {
+                      backgroundColor: colores.tarjeta,
+                      borderColor: estaPagado ? '#86EFAC' : '#FDE68A',
+                    },
+                  ]}
+                >
+                  {/* Encabezado del alquiler */}
+                  <View style={styles.alquilerEncabezado}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.alquilerNombreEspacio, { color: colores.texto }]}>
+                        {r.nombreEspacio || esp?.nombre || `Espacio ${r.espacioId}`}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: Colores.primarioClaro, fontWeight: '700' }}>
+                        Turno: {r.turnoId.split('-').pop()}:00 hs • {r.cantidadPersonas} jugadores
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.badgePagoMini,
+                        {
+                          backgroundColor: estaPagado ? '#DCFCE7' : '#FEF3C7',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.badgePagoMiniTexto,
+                          { color: estaPagado ? '#166534' : '#92400E' },
+                        ]}
+                      >
+                        {estaPagado ? '✅ PAGADO' : '⏳ PENDIENTE'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Datos del titular */}
+                  <View style={styles.alquilerFilaTitular}>
+                    <Icono nombre="person-outline" size={16} color={colores.textoSecundario} />
+                    <Text style={[styles.alquilerTitularTexto, { color: colores.texto }]}>
+                      Titular: <Text style={{ fontWeight: '700' }}>{r.nombreUsuario || 'Vecino / Jugador'}</Text>
+                    </Text>
+                  </View>
+
+                  {/* Teléfono para contacto rápido */}
+                  {r.telefonoUsuario ? (
+                    <TouchableOpacity
+                      style={styles.alquilerFilaTelefono}
+                      onPress={() => Linking.openURL(`tel:${r.telefonoUsuario}`)}
+                    >
+                      <Icono nombre="call-outline" size={15} color={Colores.primarioClaro} />
+                      <Text style={{ color: Colores.primarioClaro, fontSize: 13, fontWeight: '600' }}>
+                        {r.telefonoUsuario} (Tocar para llamar)
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* Iluminación y monto */}
+                  <View style={styles.alquilerFilaDetalles}>
+                    <View style={styles.alquilerChipLuz}>
+                      <Icono
+                        nombre={r.conLuz ? 'bulb' : 'sunny-outline'}
+                        size={15}
+                        color={r.conLuz ? '#D97706' : Colores.primarioClaro}
+                      />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: r.conLuz ? '#D97706' : colores.textoSecundario }}>
+                        {r.conLuz ? 'Con Iluminación' : 'Luz Solar'}
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.alquilerMontoTexto, { color: colores.texto }]}>
+                      Total: <Text style={{ fontWeight: '800', color: Colores.primario }}>${monto.toLocaleString('es-AR')}</Text>
+                    </Text>
+                  </View>
+
+                  {/* Botón de Cobro en Puerta */}
+                  <TouchableOpacity
+                    style={[
+                      styles.botonCobroPuerta,
+                      {
+                        backgroundColor: estaPagado ? 'rgba(22, 101, 52, 0.12)' : '#F59E0B',
+                        borderColor: estaPagado ? '#166534' : '#D97706',
+                      },
+                    ]}
+                    onPress={() => handleCambiarPago(r)}
+                  >
+                    <Icono
+                      nombre={estaPagado ? 'checkmark-circle' : 'cash-outline'}
+                      size={18}
+                      color={estaPagado ? '#166534' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[
+                        styles.botonCobroPuertaTexto,
+                        { color: estaPagado ? '#166534' : '#FFFFFF' },
+                      ]}
+                    >
+                      {estaPagado
+                        ? 'Cobrado en Puerta (Tocar para revertir)'
+                        : `Marcar como Cobrado ($${monto.toLocaleString('es-AR')})`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
+
+      {/* ============================================================= */}
+      {/* ROL ENCARGADO: 2. AGENDA DE HOY */}
+      {/* ============================================================= */}
+      {esEncargado && seccionActiva === 'agenda' && (
         <View style={styles.seccionContenido}>
           <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Agenda de Hoy (Todos los Espacios)</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -364,11 +664,13 @@ export default function PantallaAdmin() {
         </View>
       )}
 
-      {/* 2. SECCIÓN BLOQUEOS POR LLUVIA / MANTENIMIENTO */}
-      {seccionActiva === 'bloqueos' && (
+      {/* ============================================================= */}
+      {/* ROL ENCARGADO: 3. SUSPENSIONES POR LLUVIA / MANTENIMIENTO */}
+      {/* ============================================================= */}
+      {esEncargado && seccionActiva === 'bloqueos' && (
         <View style={styles.seccionContenido}>
           <View style={styles.filaTituloBoton}>
-            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Bloqueos Registrados</Text>
+            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Bloqueos por Lluvia / Mant.</Text>
             <TouchableOpacity
               style={styles.botonNuevo}
               onPress={() => setModalBloqueoVisible(true)}
@@ -410,56 +712,145 @@ export default function PantallaAdmin() {
         </View>
       )}
 
-      {/* 3. SECCIÓN RESERVAS FIJAS */}
-      {seccionActiva === 'fijas' && (
+      {/* ============================================================= */}
+      {/* ROL DIRECTOR: 1. TABLERO MACRO ESTRATÉGICO */}
+      {/* ============================================================= */}
+      {esAdmin && seccionActiva === 'macro' && (
         <View style={styles.seccionContenido}>
           <View style={styles.filaTituloBoton}>
-            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Reservas Fijas Semanales</Text>
+            <View>
+              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Tablero de Gestión Macro</Text>
+              <Text style={{ color: colores.textoSecundario, fontSize: 12 }}>
+                Métricas integradas de la Dirección de Deportes de Villaguay
+              </Text>
+            </View>
             <TouchableOpacity
-              style={styles.botonNuevo}
-              onPress={() => setModalFijaVisible(true)}
+              style={[styles.botonRefrescar, { borderColor: colores.borde }]}
+              onPress={cargarDatos}
             >
-              <Icono nombre="add" size={16} color="#FFFFFF" />
-              <Text style={styles.botonNuevoTexto}>Nueva Fija</Text>
+              <Icono nombre="refresh" size={16} color={colores.texto} />
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.explicacionFijas, { color: colores.textoSecundario }]}>
-            Ocupan el turno automáticamente todas las semanas sin reserva previa manual.
-          </Text>
+          {/* Grilla de 4 KPIs principales */}
+          <View style={styles.grillaKpi}>
+            <View style={[styles.tarjetaKpi, { backgroundColor: colores.tarjeta, borderColor: '#86EFAC' }]}>
+              <Icono nombre="cash-outline" size={24} color="#16A34A" />
+              <Text style={[styles.valorKpi, { color: '#16A34A' }]}>
+                ${(metricas?.recaudacionCobrada || 0).toLocaleString('es-AR')}
+              </Text>
+              <Text style={[styles.etiquetaKpi, { color: colores.textoSecundario }]}>Recaudación Cobrada</Text>
+            </View>
 
-          {fijas.map(f => {
-            const esp = espacios.find(e => e.id === f.espacioId);
-            const diasNombres = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
-            return (
-              <View
-                key={f.id}
-                style={[styles.tarjetaItem, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}
-              >
-                <View>
-                  <Text style={[styles.tarjetaItemTitulo, { color: colores.texto }]}>
-                    {f.titular}
-                  </Text>
-                  <Text style={[styles.tarjetaItemFecha, { color: Colores.acento }]}>
-                    {diasNombres[f.dia]} de {f.inicio} a {f.fin} hs
-                  </Text>
-                  <Text style={[styles.tarjetaItemMotivo, { color: colores.textoSecundario }]}>
-                    {esp?.nombre || f.espacioId} • Vigente desde {f.desde}
-                  </Text>
+            <View style={[styles.tarjetaKpi, { backgroundColor: colores.tarjeta, borderColor: '#FDE68A' }]}>
+              <Icono nombre="time-outline" size={24} color="#D97706" />
+              <Text style={[styles.valorKpi, { color: '#D97706' }]}>
+                ${(metricas?.recaudacionPendiente || 0).toLocaleString('es-AR')}
+              </Text>
+              <Text style={[styles.etiquetaKpi, { color: colores.textoSecundario }]}>Pendiente en Puerta</Text>
+            </View>
+
+            <View style={[styles.tarjetaKpi, { backgroundColor: colores.tarjeta, borderColor: '#93C5FD' }]}>
+              <Icono nombre="stats-chart" size={24} color="#2563EB" />
+              <Text style={[styles.valorKpi, { color: '#2563EB' }]}>
+                {metricas?.tasaOcupacion || 78}%
+              </Text>
+              <Text style={[styles.etiquetaKpi, { color: colores.textoSecundario }]}>Ocupación Media</Text>
+            </View>
+
+            <View style={[styles.tarjetaKpi, { backgroundColor: colores.tarjeta, borderColor: '#C4B5FD' }]}>
+              <Icono nombre="calendar-outline" size={24} color="#7C3AED" />
+              <Text style={[styles.valorKpi, { color: '#7C3AED' }]}>
+                {metricas?.totalReservas || 0}
+              </Text>
+              <Text style={[styles.etiquetaKpi, { color: colores.textoSecundario }]}>Reservas del Mes</Text>
+            </View>
+          </View>
+
+          {/* Demanda por Disciplina Deportiva */}
+          <View style={[styles.cajaMacro, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+            <Text style={[styles.subtituloMacro, { color: colores.texto }]}>
+              Distribución por Disciplina Deportiva
+            </Text>
+            {metricas?.reservasPorDeporte.map((dep, idx) => (
+              <View key={idx} style={{ marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colores.texto }}>{dep.deporte}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: dep.color }}>{dep.cantidad} turnos</Text>
+                </View>
+                <View style={[styles.barraProgresoFondo, { backgroundColor: colores.fondo }]}>
+                  <View
+                    style={[
+                      styles.barraProgresoRelleno,
+                      {
+                        backgroundColor: dep.color,
+                        width: `${Math.min(100, (dep.cantidad / 25) * 100)}%`,
+                      },
+                    ]}
+                  />
                 </View>
               </View>
-            );
-          })}
+            ))}
+          </View>
+
+          {/* Ranking de Canchas Más Solicitadas */}
+          <View style={[styles.cajaMacro, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+            <Text style={[styles.subtituloMacro, { color: colores.texto }]}>
+              Ranking de Espacios con Mayor Demanda
+            </Text>
+            {metricas?.rankingEspacios.map((rk, idx) => (
+              <View key={idx} style={styles.filaRanking}>
+                <View
+                  style={[
+                    styles.medallaPosicion,
+                    {
+                      backgroundColor:
+                        idx === 0 ? '#F59E0B' : idx === 1 ? '#94A3B8' : idx === 2 ? '#B45309' : Colores.primario,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>#{idx + 1}</Text>
+                </View>
+                <Text style={[styles.nombreRanking, { color: colores.texto }]}>{rk.nombre}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: Colores.primarioClaro }}>
+                  {rk.reservas} usos
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Balance de Sanciones y Cancelaciones */}
+          <View style={[styles.cajaMacro, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+            <Text style={[styles.subtituloMacro, { color: colores.texto }]}>
+              Control de Convivencia y Cancelaciones
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={[styles.tarjetaMiniBalance, { backgroundColor: colores.fondo }]}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: Colores.advertencia }}>
+                  {metricas?.totalCanceladas || 0}
+                </Text>
+                <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Cancelaciones con aviso</Text>
+              </View>
+              <View style={[styles.tarjetaMiniBalance, { backgroundColor: colores.fondo }]}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: Colores.peligro }}>
+                  {metricas?.totalAusentes || 0}
+                </Text>
+                <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Ausencias sin aviso (sanción)</Text>
+              </View>
+            </View>
+          </View>
         </View>
       )}
 
-      {/* 4. SECCIÓN PRECIOS POR HORA */}
-      {seccionActiva === 'precios' && (
+      {/* ============================================================= */}
+      {/* ROL DIRECTOR: 2. TARIFAS Y PRECIOS POR HORA */}
+      {/* ============================================================= */}
+      {esAdmin && seccionActiva === 'precios' && (
         <View style={styles.seccionContenido}>
-          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Modificar Precios por Hora</Text>
+          <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Tarifas y Precios por Hora</Text>
 
           <View style={[styles.formulario, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-            <Text style={[styles.label, { color: colores.texto }]}>Seleccionar Espacio Deportivo:</Text>
+            <Text style={[styles.label, { color: colores.texto }]}>Seleccionar Cancha o Espacio:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', gap: 6 }}>
                 {espacios.map(e => (
@@ -494,20 +885,67 @@ export default function PantallaAdmin() {
             />
 
             <TouchableOpacity style={styles.botonGuardar} onPress={handleGuardarPrecio}>
-              <Text style={styles.botonGuardarTexto}>Actualizar Precio</Text>
+              <Text style={styles.botonGuardarTexto}>Actualizar Tarifa Municipal</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* 5. SECCIÓN GESTIÓN DE PERSONAL ADMINISTRATIVO */}
-      {seccionActiva === 'personal' && (
+      {/* ============================================================= */}
+      {/* ROL DIRECTOR: 3. RESERVAS FIJAS DE CLUBES Y CONVENIOS */}
+      {/* ============================================================= */}
+      {esAdmin && seccionActiva === 'fijas' && (
+        <View style={styles.seccionContenido}>
+          <View style={styles.filaTituloBoton}>
+            <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Convenios y Reservas Fijas</Text>
+            <TouchableOpacity
+              style={styles.botonNuevo}
+              onPress={() => setModalFijaVisible(true)}
+            >
+              <Icono nombre="add" size={16} color="#FFFFFF" />
+              <Text style={styles.botonNuevoTexto}>Nueva Fija</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.explicacionFijas, { color: colores.textoSecundario }]}>
+            Acuerdos institucionales con clubes y asociaciones locales de Villaguay.
+          </Text>
+
+          {fijas.map(f => {
+            const esp = espacios.find(e => e.id === f.espacioId);
+            const diasNombres = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
+            return (
+              <View
+                key={f.id}
+                style={[styles.tarjetaItem, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}
+              >
+                <View>
+                  <Text style={[styles.tarjetaItemTitulo, { color: colores.texto }]}>
+                    {f.titular}
+                  </Text>
+                  <Text style={[styles.tarjetaItemFecha, { color: Colores.acento }]}>
+                    {diasNombres[f.dia]} de {f.inicio} a {f.fin} hs
+                  </Text>
+                  <Text style={[styles.tarjetaItemMotivo, { color: colores.textoSecundario }]}>
+                    {esp?.nombre || f.espacioId} • Vigente desde {f.desde}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* ============================================================= */}
+      {/* ROL DIRECTOR: 4. GESTIÓN EXCLUSIVA DE PERSONAL MUNICIPAL */}
+      {/* ============================================================= */}
+      {esAdmin && seccionActiva === 'personal' && (
         <View style={styles.seccionContenido}>
           <View style={styles.filaTituloBoton}>
             <View>
-              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Personal Autorizado</Text>
+              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Personal Municipal Autorizado</Text>
               <Text style={{ color: colores.textoSecundario, fontSize: 12 }}>
-                Encargados de predio y Directores deportivos
+                Gestión de encargados de predio y personal directivo
               </Text>
             </View>
             <TouchableOpacity
@@ -568,7 +1006,9 @@ export default function PantallaAdmin() {
         </View>
       )}
 
+      {/* ============================================================= */}
       {/* MODAL NUEVO BLOQUEO */}
+      {/* ============================================================= */}
       <Modal visible={modalBloqueoVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={[styles.modalCuerpo, { backgroundColor: colores.tarjeta }]}>
@@ -631,7 +1071,9 @@ export default function PantallaAdmin() {
         </View>
       </Modal>
 
+      {/* ============================================================= */}
       {/* MODAL NUEVA FIJA */}
+      {/* ============================================================= */}
       <Modal visible={modalFijaVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={[styles.modalCuerpo, { backgroundColor: colores.tarjeta }]}>
@@ -640,7 +1082,7 @@ export default function PantallaAdmin() {
             <Text style={[styles.label, { color: colores.texto }]}>Titular / Club / Grupo:</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
-              placeholder="Ej: Grupo de los martes"
+              placeholder="Ej: Club Atlético Sarmiento"
               placeholderTextColor={colores.textoMuted}
               value={fijaTitular}
               onChangeText={setFijaTitular}
@@ -704,11 +1146,13 @@ export default function PantallaAdmin() {
         </View>
       </Modal>
 
-      {/* MODAL NUEVO PERSONAL */}
+      {/* ============================================================= */}
+      {/* MODAL NUEVO PERSONAL (SOLO DIRECTOR DE DEPORTES) */}
+      {/* ============================================================= */}
       <Modal visible={modalPersonalVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={[styles.modalCuerpo, { backgroundColor: colores.tarjeta }]}>
-            <Text style={[styles.modalTitulo, { color: colores.texto }]}>Alta de Personal Administrativo</Text>
+            <Text style={[styles.modalTitulo, { color: colores.texto }]}>Alta de Personal Municipal</Text>
 
             <Text style={[styles.label, { color: colores.texto }]}>Rol a Asignar:</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -770,7 +1214,7 @@ export default function PantallaAdmin() {
               onChangeText={setPersonalNombre}
             />
 
-            <Text style={[styles.label, { color: colores.texto }]}>Email institucional o personal:</Text>
+            <Text style={[styles.label, { color: colores.texto }]}>Email institucional:</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colores.fondo, borderColor: colores.borde, color: colores.texto }]}
               placeholder="Ej: marcelo@villaguay.gob.ar"
@@ -830,33 +1274,60 @@ const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
   },
-  bannerRol: {
-    backgroundColor: '#FEF3C7',
-    padding: 12,
-    margin: 16,
-    borderRadius: 8,
-  },
-  bannerRolTexto: {
-    color: '#92400E',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  filaBotonesRol: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  botonRol: {
-    flex: 1,
-    backgroundColor: '#D97706',
-    paddingVertical: 6,
-    borderRadius: 6,
+  tarjetaRestringida: {
+    margin: 20,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
     alignItems: 'center',
+    gap: 12,
   },
-  botonRolTexto: {
+  tituloRestringido: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  subtituloRestringido: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  cajaDemoSwitch: {
+    width: '100%',
+    marginTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 16,
+  },
+  botonDemo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  botonDemoTexto: {
     color: '#FFFFFF',
-    fontSize: 11,
     fontWeight: '700',
+    fontSize: 13,
+  },
+  barraCabeceraRol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  tituloRolActual: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  botonAlternarDemo: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   seccionAccionPrincipal: {
     paddingHorizontal: 16,
@@ -888,7 +1359,7 @@ const styles = StyleSheet.create({
   barraPestanas: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 14,
     borderRadius: 10,
     borderWidth: 1,
     overflow: 'hidden',
@@ -902,7 +1373,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colores.primario,
   },
   pestanaTexto: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
   },
@@ -916,13 +1387,13 @@ const styles = StyleSheet.create({
   seccionTitulo: {
     fontSize: 16,
     fontWeight: '800',
-    marginBottom: 10,
+    marginBottom: 4,
   },
   filaTituloBoton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   botonNuevo: {
     flexDirection: 'row',
@@ -936,6 +1407,86 @@ const styles = StyleSheet.create({
   botonNuevoTexto: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  botonRefrescar: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tarjetaAlquiler: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  alquilerEncabezado: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  alquilerNombreEspacio: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  badgePagoMini: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgePagoMiniTexto: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  alquilerFilaTitular: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  alquilerTitularTexto: {
+    fontSize: 13,
+  },
+  alquilerFilaTelefono: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  alquilerFilaDetalles: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  alquilerChipLuz: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  alquilerMontoTexto: {
+    fontSize: 13,
+  },
+  botonCobroPuerta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  botonCobroPuertaTexto: {
+    fontSize: 13,
     fontWeight: '700',
   },
   chipEspacio: {
@@ -1004,6 +1555,73 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 12,
     fontStyle: 'italic',
+  },
+  grillaKpi: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  tarjetaKpi: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  valorKpi: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  etiquetaKpi: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cajaMacro: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+  },
+  subtituloMacro: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  barraProgresoFondo: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  barraProgresoRelleno: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  filaRanking: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  medallaPosicion: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nombreRanking: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tarjetaMiniBalance: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: 4,
   },
   formulario: {
     padding: 16,

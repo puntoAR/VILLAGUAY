@@ -45,6 +45,7 @@ export interface Turno {
 }
 
 export type EstadoReserva = 'confirmada' | 'cancelada' | 'cumplida' | 'ausente';
+export type EstadoPago = 'pagado' | 'pendiente';
 
 export interface Reserva {
   id: string;
@@ -57,6 +58,24 @@ export interface Reserva {
   ingresoEn: string | null;
   creadaEn: string; // ISO 8601
   cancelableHasta: string; // ISO 8601
+  conLuz?: boolean;
+  montoTotal?: number;
+  estadoPago?: EstadoPago;
+  nombreUsuario?: string;
+  telefonoUsuario?: string;
+  nombreEspacio?: string;
+}
+
+export interface MetricasMacro {
+  recaudacionTotal: number;
+  recaudacionCobrada: number;
+  recaudacionPendiente: number;
+  totalReservas: number;
+  tasaOcupacion: number;
+  reservasPorDeporte: { deporte: string; cantidad: number; color: string }[];
+  rankingEspacios: { nombre: string; reservas: number }[];
+  totalCanceladas: number;
+  totalAusentes: number;
 }
 
 export interface ReservaFija {

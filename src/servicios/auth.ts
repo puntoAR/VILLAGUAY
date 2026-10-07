@@ -200,13 +200,15 @@ export const AuthServicio = {
       }
 
       const id = `usr-${Date.now().toString().slice(-4)}`;
-      const rolSeleccionado = datos.rol || 'jugador';
+      // Los usuarios en general SOLO pueden registrarse como jugador.
+      // El alta de personal (encargados y directores) la realiza exclusivamente el Director de Deportes.
+      const rolAsignado: Rol = 'jugador';
       const nuevoUsuario: Usuario = {
         id,
         nombre,
         email,
         telefono,
-        rol: rolSeleccionado,
+        rol: rolAsignado,
         espaciosFavoritos: [],
         cancelacionesTardias: 0,
         ausencias: 0,

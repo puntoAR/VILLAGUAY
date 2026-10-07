@@ -16,6 +16,9 @@ interface AuthContextType {
   cambiarRolDemo: (rol: Rol) => Promise<void>;
   alternarFavorito: (espacioId: string) => Promise<void>;
   esEncargadoOAdmin: boolean;
+  esJugador: boolean;
+  esEncargado: boolean;
+  esAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,6 +33,9 @@ const AuthContext = createContext<AuthContextType>({
   cambiarRolDemo: async () => {},
   alternarFavorito: async () => {},
   esEncargadoOAdmin: false,
+  esJugador: false,
+  esEncargado: false,
+  esAdmin: false,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -101,6 +107,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const esEncargadoOAdmin = usuario?.rol === 'encargado' || usuario?.rol === 'administrador';
+  const esJugador = usuario?.rol === 'jugador';
+  const esEncargado = usuario?.rol === 'encargado';
+  const esAdmin = usuario?.rol === 'administrador';
 
   return (
     <AuthContext.Provider
@@ -116,6 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cambiarRolDemo,
         alternarFavorito,
         esEncargadoOAdmin,
+        esJugador,
+        esEncargado,
+        esAdmin,
       }}
     >
       {children}

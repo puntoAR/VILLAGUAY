@@ -44,8 +44,13 @@ export default function PantallaGrilla() {
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null);
   const [mostrarModal, setMostrarModal] = useState<boolean>(false);
   const [cantidadPersonas, setCantidadPersonas] = useState<number>(2);
+  const [conLuz, setConLuz] = useState<boolean>(false);
   const [deporteElegidoId, setDeporteElegidoId] = useState<string>('');
   const [reservando, setReservando] = useState<boolean>(false);
+
+  const CANON_LUZ = 2500;
+  const precioBase = espacio?.precioPorHora || 0;
+  const precioTotal = precioBase + (conLuz ? CANON_LUZ : 0);
 
   // Cargar información del espacio
   useEffect(() => {
@@ -110,6 +115,9 @@ export default function PantallaGrilla() {
       );
       return;
     }
+    const horaInicioNum = parseInt(turno.inicio.split(':')[0], 10);
+    const sugiereLuz = horaInicioNum >= 19 && (espacio?.iluminacion ?? false);
+    setConLuz(sugiereLuz);
     setTurnoSeleccionado(turno);
     setCantidadPersonas(Math.min(2, espacio?.capacidad || 10));
     setMostrarModal(true);
@@ -127,6 +135,11 @@ export default function PantallaGrilla() {
       cantidadPersonas,
       fecha: fechaSeleccionada,
       inicio: turnoSeleccionado.inicio,
+      conLuz,
+      montoTotal: precioTotal,
+      estadoPago: 'pendiente',
+      nombreUsuario: usuario.nombre,
+      telefonoUsuario: usuario.telefono,
     });
     setReservando(false);
 
@@ -315,18 +328,79 @@ export default function PantallaGrilla() {
 
                   <View style={styles.modalFilaDato}>
                     <Icono nombre="pricetag-outline" size={18} color={Colores.primarioClaro} />
-                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Tarifa municipal:</Text>
+                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Tarifa base:</Text>
                     <Text style={[styles.modalDatoValor, { color: Colores.primarioClaro, fontWeight: '800' }]}>
                       ${espacio.precioPorHora.toLocaleString('es-AR')}
                     </Text>
                   </View>
                 </View>
 
-                {/* Selector de cantidad de jugadores */}
+                {/* Selector de Iluminación Artificial (Con / Sin Luz) */}
                 <View style={styles.campoSelector}>
                   <Text style={[styles.campoLabel, { color: colores.texto }]}>
-                    Cantidad de deportistas (Máx. {espacio.capacidad}):
+                    Iluminación de la Cancha:
                   </Text>
+                  {espacio.iluminacion ? (
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        style={[
+                          styles.tarjetaOpcionLuz,
+                          {
+                            backgroundColor: !conLuz ? Colores.primarioClaro + '15' : colores.fondo,
+                            borderColor: !conLuz ? Colores.primarioClaro : colores.borde,
+                            borderWidth: !conLuz ? 2 : 1,
+                          },
+                        ]}
+                        onPress={() => setConLuz(false)}
+                      >
+                        <Icono nombre="sunny-outline" size={20} color={!conLuz ? Colores.primarioClaro : colores.textoSecundario} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.tituloOpcionLuz, { color: colores.texto }]}>Sin Luz</Text>
+                          <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Tarifa base</Text>
+                        </View>
+                        <Text style={[styles.precioOpcionLuz, { color: colores.texto }]}>+$0</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.tarjetaOpcionLuz,
+                          {
+                            backgroundColor: conLuz ? '#F59E0B18' : colores.fondo,
+                            borderColor: conLuz ? '#F59E0B' : colores.borde,
+                            borderWidth: conLuz ? 2 : 1,
+                          },
+                        ]}
+                        onPress={() => setConLuz(true)}
+                      >
+                        <Icono nombre="bulb" size={20} color={conLuz ? '#F59E0B' : colores.textoSecundario} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.tituloOpcionLuz, { color: colores.texto }]}>Con Luz</Text>
+                          <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Torres nocturnas</Text>
+                        </View>
+                        <Text style={[styles.precioOpcionLuz, { color: '#D97706', fontWeight: '800' }]}>+$2.500</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={[styles.avisoSinLuz, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
+                      <Icono nombre="sunny-outline" size={16} color={colores.textoMuted} />
+                      <Text style={{ color: colores.textoMuted, fontSize: 12 }}>
+                        Este espacio funciona exclusivamente con luz solar (sin reflectores).
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Selector de cantidad de jugadores */}
+                <View style={styles.campoSelector}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.campoLabel, { color: colores.texto }]}>
+                      Cantidad de deportistas (Máx. {espacio.capacidad}):
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colores.primarioClaro }}>
+                      {cantidadPersonas} {cantidadPersonas === 1 ? 'jugador' : 'jugadores'}
+                    </Text>
+                  </View>
+
                   <View style={styles.contadorContainer}>
                     <TouchableOpacity
                       style={[styles.botonContador, { backgroundColor: colores.fondo, borderColor: colores.borde }]}
@@ -348,6 +422,67 @@ export default function PantallaGrilla() {
                       <Icono nombre="add" size={20} color={colores.texto} />
                     </TouchableOpacity>
                   </View>
+
+                  {/* Atajos rápidos de jugadores según capacidad */}
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+                    {[2, 4, Math.floor(espacio.capacidad / 2), espacio.capacidad]
+                      .filter((val, idx, arr) => val <= espacio.capacidad && val > 0 && arr.indexOf(val) === idx)
+                      .map(cant => (
+                        <TouchableOpacity
+                          key={cant}
+                          style={[
+                            styles.chipPresetJugadores,
+                            {
+                              backgroundColor: cantidadPersonas === cant ? Colores.primarioClaro : colores.fondo,
+                              borderColor: colores.borde,
+                            },
+                          ]}
+                          onPress={() => setCantidadPersonas(cant)}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: cantidadPersonas === cant ? '#FFFFFF' : colores.texto,
+                            }}
+                          >
+                            {cant} jug.
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                  </View>
+                </View>
+
+                {/* Desglose de Pago transparente */}
+                <View style={[styles.desgloseCaja, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
+                  <View style={styles.desgloseFila}>
+                    <Text style={{ color: colores.textoSecundario, fontSize: 13 }}>Alquiler cancha:</Text>
+                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '600' }}>
+                      ${precioBase.toLocaleString('es-AR')}
+                    </Text>
+                  </View>
+                  {conLuz && (
+                    <View style={styles.desgloseFila}>
+                      <Text style={{ color: colores.textoSecundario, fontSize: 13 }}>💡 Iluminación nocturna:</Text>
+                      <Text style={{ color: '#D97706', fontSize: 13, fontWeight: '700' }}>
+                        +${CANON_LUZ.toLocaleString('es-AR')}
+                      </Text>
+                    </View>
+                  )}
+                  <View
+                    style={[
+                      styles.desgloseFila,
+                      { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colores.borde, paddingTop: 6, marginTop: 4 },
+                    ]}
+                  >
+                    <Text style={{ color: colores.texto, fontSize: 15, fontWeight: '800' }}>Total a abonar:</Text>
+                    <Text style={{ color: Colores.primarioClaro, fontSize: 18, fontWeight: '900' }}>
+                      ${precioTotal.toLocaleString('es-AR')}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: colores.textoMuted, marginTop: 4 }}>
+                    * Se abona en puerta al encargado del predio.
+                  </Text>
                 </View>
 
                 {/* Avisos de política de cancelación y normas de la Dirección de Deportes */}
@@ -623,5 +758,46 @@ const styles = StyleSheet.create({
   botonCancelarModalTexto: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  tarjetaOpcionLuz: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+  },
+  tituloOpcionLuz: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  precioOpcionLuz: {
+    fontSize: 12,
+  },
+  avisoSinLuz: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  chipPresetJugadores: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  desgloseCaja: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+    gap: 6,
+  },
+  desgloseFila: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

@@ -57,7 +57,13 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
       estado TEXT NOT NULL,
       ingresoEn TEXT,
       creadaEn TEXT NOT NULL,
-      cancelableHasta TEXT NOT NULL
+      cancelableHasta TEXT NOT NULL,
+      conLuz INTEGER DEFAULT 0,
+      montoTotal INTEGER DEFAULT 0,
+      estadoPago TEXT DEFAULT 'pendiente',
+      nombreUsuario TEXT,
+      telefonoUsuario TEXT,
+      nombreEspacio TEXT
     );
 
     CREATE TABLE IF NOT EXISTS reservas_fijas (
@@ -108,6 +114,23 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
     );
   } catch {
     // ignorar si no aplica
+  }
+
+  // Migraciones para reservas (conLuz, montoTotal, estadoPago, nombreUsuario, telefonoUsuario, nombreEspacio)
+  const colsReserva = [
+    'conLuz INTEGER DEFAULT 0',
+    'montoTotal INTEGER DEFAULT 0',
+    'estadoPago TEXT DEFAULT "pendiente"',
+    'nombreUsuario TEXT',
+    'telefonoUsuario TEXT',
+    'nombreEspacio TEXT'
+  ];
+  for (const col of colsReserva) {
+    try {
+      await db.execAsync(`ALTER TABLE reservas ADD COLUMN ${col};`);
+    } catch {
+      // Ignorar si ya existe
+    }
   }
 
   // Sembrar datos iniciales si no existen

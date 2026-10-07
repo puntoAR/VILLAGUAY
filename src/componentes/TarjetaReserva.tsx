@@ -49,10 +49,10 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
       <View style={styles.encabezado}>
         <View style={styles.titular}>
           <Text style={[styles.nombreEspacio, { color: colores.texto }]}>
-            {espacio?.nombre || `Espacio ${reserva.espacioId}`}
+            {espacio?.nombre || reserva.nombreEspacio || `Espacio ${reserva.espacioId}`}
           </Text>
           <Text style={[styles.complejo, { color: colores.textoSecundario }]}>
-            {espacio?.complejo || 'Polideportivo Municipal'}
+            {espacio?.complejo || 'Polideportivo Municipal Villaguay'}
           </Text>
         </View>
 
@@ -72,7 +72,42 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
         <View style={styles.datoItem}>
           <Icono nombre="people-outline" size={16} color={Colores.primarioClaro} />
           <Text style={[styles.datoTexto, { color: colores.texto }]}>
-            {reserva.cantidadPersonas} personas
+            {reserva.cantidadPersonas} deportistas
+          </Text>
+        </View>
+      </View>
+
+      {/* Fila de Iluminación y Estado de Pago */}
+      <View style={[styles.datosFila, { alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }]}>
+        <View style={styles.datoItem}>
+          <Icono
+            nombre={reserva.conLuz ? 'bulb' : 'sunny-outline'}
+            size={16}
+            color={reserva.conLuz ? '#D97706' : Colores.primarioClaro}
+          />
+          <Text style={[styles.datoTexto, { color: reserva.conLuz ? '#D97706' : colores.texto, fontWeight: reserva.conLuz ? '700' : '500' }]}>
+            {reserva.conLuz ? '💡 Con Luz nocturna' : '☀️ Sin Luz'}
+          </Text>
+        </View>
+
+        <View
+          style={[
+            styles.badgePago,
+            {
+              backgroundColor: reserva.estadoPago === 'pagado' ? '#DCFCE7' : '#FEF3C7',
+              borderColor: reserva.estadoPago === 'pagado' ? '#86EFAC' : '#FDE68A',
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.badgePagoTexto,
+              { color: reserva.estadoPago === 'pagado' ? '#166534' : '#92400E' },
+            ]}
+          >
+            {reserva.estadoPago === 'pagado'
+              ? `✅ Pagado: $${(reserva.montoTotal ?? espacio?.precioHora ?? 0).toLocaleString('es-AR')}`
+              : `⏳ Por abonar: $${(reserva.montoTotal ?? espacio?.precioHora ?? 0).toLocaleString('es-AR')}`}
           </Text>
         </View>
       </View>
@@ -229,6 +264,16 @@ const styles = StyleSheet.create({
   },
   botonCancelarTexto: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  badgePago: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgePagoTexto: {
+    fontSize: 11,
     fontWeight: '700',
   },
 });
