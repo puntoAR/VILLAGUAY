@@ -30,6 +30,7 @@ export default function PantallaLogin() {
     registrar,
     reingresoBiometrico,
     cambiarRolDemo,
+    seleccionarUsuarioDemo: authSeleccionarDemo,
     soportaBiometria,
     cerrarSesion,
   } = useAuth();
@@ -177,7 +178,7 @@ export default function PantallaLogin() {
   // Selector rápido de demostración oral para la mesa de examen
   const seleccionarUsuarioDemo = async (u: Usuario) => {
     await Haptica.seleccionSuave();
-    await cambiarRolDemo(u.rol);
+    await authSeleccionarDemo(u);
     navegarAlSistema();
   };
 

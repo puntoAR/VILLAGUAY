@@ -115,6 +115,16 @@ export default function PantallaGrilla() {
       );
       return;
     }
+
+    if (usuario.rol === 'encargado' || usuario.rol === 'administrador') {
+      const rolTexto = usuario.rol === 'administrador' ? 'Director de Deportes' : 'Encargado del Predio';
+      Alert.alert(
+        'Modo Consulta — Personal Municipal',
+        `Como ${rolTexto}, podés supervisar las canchas y consultar la disponibilidad de los turnos, pero la reserva de alquileres está reservada exclusivamente para los jugadores y vecinos.`
+      );
+      return;
+    }
+
     const horaInicioNum = parseInt(turno.inicio.split(':')[0], 10);
     const sugiereLuz = horaInicioNum >= 19 && (espacio?.iluminacion ?? false);
     setConLuz(sugiereLuz);
@@ -125,6 +135,11 @@ export default function PantallaGrilla() {
 
   const confirmarReserva = async () => {
     if (!espacio || !turnoSeleccionado || !usuario) return;
+
+    if (usuario.rol !== 'jugador') {
+      Alert.alert('Acceso no permitido', 'Solo los usuarios con rol de jugador pueden realizar reservas de canchas.');
+      return;
+    }
 
     setReservando(true);
     const resultado = await ReservasServicio.crearReserva({
@@ -199,6 +214,26 @@ export default function PantallaGrilla() {
           <Text style={styles.precioTexto}>/ hora</Text>
         </View>
       </View>
+
+      {/* Banner informativo de modo consulta para personal municipal */}
+      {usuario && (usuario.rol === 'encargado' || usuario.rol === 'administrador') && (
+        <View
+          style={[
+            styles.bannerPersonal,
+            { backgroundColor: colores.tarjeta, borderColor: '#D97706' },
+          ]}
+        >
+          <Icono nombre="eye-outline" size={22} color="#D97706" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.bannerPersonalTitulo, { color: colores.texto }]}>
+              Modo Supervisión ({usuario.rol === 'administrador' ? 'Dirección de Deportes' : 'Encargado de Predio'})
+            </Text>
+            <Text style={[styles.bannerPersonalDesc, { color: colores.textoSecundario }]}>
+              Tenés acceso a la consulta y supervisión de turnos de la cancha. La reserva de alquileres está reservada exclusivamente para los jugadores y vecinos.
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Selector de 7 días */}
       <View style={styles.seccionDias}>
@@ -537,6 +572,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+  },
+  bannerPersonal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  bannerPersonalTitulo: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  bannerPersonalDesc: {
+    fontSize: 11,
+    lineHeight: 15,
   },
   encabezadoTexto: {
     flex: 1,

@@ -213,8 +213,17 @@ export default function DetalleEspacio() {
           activeOpacity={0.85}
           onPress={() => router.push(`/grilla/${espacio.id}` as any)}
         >
-          <Icono nombre="calendar" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-          <Text style={styles.botonDisponibilidadTexto}>Ver Grilla de Turnos</Text>
+          <Icono
+            nombre={usuario && (usuario.rol === 'encargado' || usuario.rol === 'administrador') ? 'eye-outline' : 'calendar'}
+            size={18}
+            color="#FFFFFF"
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.botonDisponibilidadTexto}>
+            {usuario && (usuario.rol === 'encargado' || usuario.rol === 'administrador')
+              ? 'Consultar Disponibilidad'
+              : 'Ver Grilla de Turnos'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

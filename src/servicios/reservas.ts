@@ -24,6 +24,17 @@ export const ReservasServicio = {
     try {
       const db = await obtenerBD();
 
+      // Validar que solo los jugadores puedan reservar
+      const usuarioObj = await db.getFirstAsync<any>(
+        'SELECT rol FROM usuarios WHERE id = ?',
+        [params.usuarioId]
+      );
+      if (usuarioObj && usuarioObj.rol !== 'jugador') {
+        return crearError(
+          'ACCESO_DENEGADO_ROL',
+          'El personal municipal (encargados y directores) no puede realizar reservas particulares de canchas.'
+        );
+      }
       const activas = await db.getAllAsync<any>(
         'SELECT * FROM reservas WHERE usuarioId = ? AND estado = "confirmada"',
         [params.usuarioId]
