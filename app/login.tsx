@@ -391,7 +391,9 @@ export default function PantallaLogin() {
 
                   if (u.rol === 'encargado') {
                     badgeColor = Colores.secundario;
-                    etiquetaRol = u.nombre.includes('Agustina') ? 'Encargada Predio' : 'Encargado Predio';
+                    etiquetaRol = u.nombre.toLowerCase().includes('agustina') || u.nombre.toLowerCase().includes('agostina')
+                      ? 'Encargada Predio'
+                      : 'Encargado Predio';
                   } else if (u.rol === 'administrador') {
                     badgeColor = '#6366F1';
                     etiquetaRol = 'Dir. Deportes';
@@ -412,11 +414,14 @@ export default function PantallaLogin() {
                       activeOpacity={0.7}
                     >
                       <View style={styles.filaDemoTop}>
-                        <Text style={[styles.demoNombre, { color: colores.texto }]}>
+                        <Text
+                          style={[styles.demoNombre, { color: colores.texto }]}
+                          numberOfLines={2}
+                        >
                           {u.nombre.replace(/\s*\(.*?\)/g, '').trim()}
                         </Text>
-                        <View style={[styles.badgeMiniRol, { backgroundColor: badgeColor + '20' }]}>
-                          <Text style={[styles.badgeMiniRolTexto, { color: badgeColor }]}>
+                        <View style={[styles.badgeMiniRol, { backgroundColor: badgeColor + '25' }]}>
+                          <Text style={[styles.badgeMiniRolTexto, { color: badgeColor }]} numberOfLines={1}>
                             {etiquetaRol}
                           </Text>
                         </View>
@@ -729,20 +734,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 3,
   },
   demoNombre: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
-    flex: 1,
+    flexShrink: 1,
+    minWidth: '50%',
   },
   badgeMiniRol: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
     borderRadius: 4,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   badgeMiniRolTexto: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   demoEmail: {
     fontSize: 11,
