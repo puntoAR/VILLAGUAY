@@ -391,7 +391,7 @@ export default function PantallaLogin() {
 
                   if (u.rol === 'encargado') {
                     badgeColor = Colores.secundario;
-                    etiquetaRol = 'Encargado Predio';
+                    etiquetaRol = u.nombre.includes('Agustina') ? 'Encargada Predio' : 'Encargado Predio';
                   } else if (u.rol === 'administrador') {
                     badgeColor = '#6366F1';
                     etiquetaRol = 'Dir. Deportes';

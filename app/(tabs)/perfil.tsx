@@ -135,7 +135,7 @@ export default function PantallaPerfil() {
 
           if (u.rol === 'encargado') {
             iconoNombre = 'camera-outline';
-            etiquetaRol = 'Encargado Predio';
+            etiquetaRol = u.nombre.includes('Agustina') ? 'Encargada Predio' : 'Encargado Predio';
             subtitulo = 'Ingreso con huella digital, escanea QR en puerta, cobra turnos.';
           } else if (u.rol === 'administrador') {
             iconoNombre = 'shield-checkmark-outline';

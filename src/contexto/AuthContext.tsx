@@ -93,7 +93,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const cambiarRolDemo = async (rol: Rol) => {
-    const u = USUARIOS_MOCK.find(x => x.rol === rol) || USUARIOS_MOCK[0];
+    let u = USUARIOS_MOCK.find(x => x.rol === rol);
+    if (!u && rol === 'administrador') {
+      u = {
+        id: 'usr-direccion',
+        nombre: 'Dirección de Deportes',
+        email: 'direccion@villaguay.gob.ar',
+        telefono: '3455-998877',
+        rol: 'administrador',
+        espaciosFavoritos: ['esp-01', 'esp-03'],
+        cancelacionesTardias: 0,
+        ausencias: 0,
+        password: '123456',
+      };
+    } else if (!u) {
+      u = USUARIOS_MOCK[0];
+    }
     await AuthServicio.guardarUsuarioActivo(u);
     setUsuario(u);
   };
