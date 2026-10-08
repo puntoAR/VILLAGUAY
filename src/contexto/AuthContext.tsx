@@ -14,6 +14,7 @@ interface AuthContextType {
   cerrarSesion: () => Promise<void>;
   reingresoBiometrico: () => Promise<boolean>;
   cambiarRolDemo: (rol: Rol) => Promise<void>;
+  seleccionarUsuarioDemo: (usuario: Usuario) => Promise<void>;
   alternarFavorito: (espacioId: string) => Promise<void>;
   esEncargadoOAdmin: boolean;
   esJugador: boolean;
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   cerrarSesion: async () => {},
   reingresoBiometrico: async () => false,
   cambiarRolDemo: async () => {},
+  seleccionarUsuarioDemo: async () => {},
   alternarFavorito: async () => {},
   esEncargadoOAdmin: false,
   esJugador: false,
@@ -96,6 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsuario(u);
   };
 
+  const seleccionarUsuarioDemo = async (u: Usuario) => {
+    await AuthServicio.guardarUsuarioActivo(u);
+    setUsuario(u);
+  };
+
   const alternarFavorito = async (espacioId: string) => {
     if (!usuario) return;
     const favs = usuario.espaciosFavoritos || [];
@@ -123,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cerrarSesion,
         reingresoBiometrico,
         cambiarRolDemo,
+        seleccionarUsuarioDemo,
         alternarFavorito,
         esEncargadoOAdmin,
         esJugador,

@@ -57,7 +57,7 @@ export const AuthServicio = {
     return token;
   },
 
-  // Obtener usuario activo actual (retorna usuario guardado, o Emiliano por defecto para demo fluida de cátedra)
+  // Obtener usuario activo actual
   async obtenerUsuarioActivo(): Promise<Usuario | null> {
     try {
       const sesionCerrada = await PreferenciasKV.obtener('auth_sesion_cerrada');
@@ -70,11 +70,25 @@ export const AuthServicio = {
         return null;
       }
 
-      // Buscar primero en SQLite
+      let idFinal = id;
+      if (id === 'usr-marcelo') idFinal = 'usr-damian';
+      else if (id === 'usr-nahuel') idFinal = 'usr-agostina';
+      else if (id === 'usr-207') idFinal = 'usr-javier';
+      else if (id === 'usr-lucia') idFinal = 'usr-ema';
+
+      if (idFinal !== id) {
+        await PreferenciasKV.guardar(CLAVE_USUARIO_ID, idFinal);
+      }
+
+      // Buscar en mocks actualizados primero para asegurar sincronización de nombres oficiales
+      const encontradoMock = USUARIOS_MOCK.find(u => u.id === idFinal);
+      if (encontradoMock) return encontradoMock;
+
+      // Buscar en SQLite
       const db = await obtenerBD();
       const usuarioBD = await db.getFirstAsync<any>(
         'SELECT * FROM usuarios WHERE id = ?',
-        [id]
+        [idFinal]
       );
 
       if (usuarioBD) {
@@ -90,10 +104,6 @@ export const AuthServicio = {
           password: usuarioBD.password,
         };
       }
-
-      // Buscar en mocks
-      const encontradoMock = USUARIOS_MOCK.find(u => u.id === id);
-      if (encontradoMock) return encontradoMock;
 
       return null;
     } catch {

@@ -286,7 +286,7 @@ export default function PantallaAdmin() {
             Acceso Exclusivo para Personal Municipal
           </Text>
           <Text style={[styles.subtituloRestringido, { color: colores.textoSecundario }]}>
-            Esta sección está reservada para el Encargado del Predio (Marcelo) y la Dirección de Deportes de Villaguay (Nahuel).
+            Esta sección está reservada para el Encargado del Predio (DAMIAN G) y la Dirección de Deportes de Villaguay (Maria Agostina García).
           </Text>
 
           <View style={styles.cajaDemoSwitch}>
@@ -298,7 +298,7 @@ export default function PantallaAdmin() {
               onPress={() => cambiarRolDemo('encargado')}
             >
               <Icono nombre="id-card" size={18} color="#FFFFFF" />
-              <Text style={styles.botonDemoTexto}>Probar como Marcelo (Encargado)</Text>
+              <Text style={styles.botonDemoTexto}>Probar como DAMIAN G (Encargado)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -306,7 +306,7 @@ export default function PantallaAdmin() {
               onPress={() => cambiarRolDemo('administrador')}
             >
               <Icono nombre="shield-checkmark" size={18} color="#FFFFFF" />
-              <Text style={styles.botonDemoTexto}>Probar como Nahuel (Director Deportivo)</Text>
+              <Text style={styles.botonDemoTexto}>Probar como Maria Agostina García (Dir. Deportes)</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -187,6 +187,13 @@ async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
       );
     }
 
+    // Limpiar y sincronizar perfiles mock oficiales
+    await db.runAsync(
+      "DELETE FROM usuarios WHERE id IN ('usr-marcelo', 'usr-nahuel', 'usr-207', 'usr-lucia')"
+    );
+    await db.runAsync("UPDATE reservas SET usuarioId = 'usr-javier' WHERE usuarioId = 'usr-207'");
+    await db.runAsync("UPDATE reservas SET usuarioId = 'usr-ema' WHERE usuarioId = 'usr-lucia'");
+
     for (const u of USUARIOS_MOCK) {
       await db.runAsync(
         'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

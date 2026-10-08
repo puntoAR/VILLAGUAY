@@ -413,7 +413,7 @@ export default function PantallaLogin() {
                     >
                       <View style={styles.filaDemoTop}>
                         <Text style={[styles.demoNombre, { color: colores.texto }]}>
-                          {u.nombre.split(' ')[0]} {u.nombre.split(' ')[1] || ''}
+                          {u.nombre.replace(/\s*\(.*?\)/g, '').trim()}
                         </Text>
                         <View style={[styles.badgeMiniRol, { backgroundColor: badgeColor + '20' }]}>
                           <Text style={[styles.badgeMiniRolTexto, { color: badgeColor }]}>

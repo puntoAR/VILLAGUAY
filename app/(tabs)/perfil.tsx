@@ -13,9 +13,10 @@ import { useTema } from '../../src/contexto/ThemeContext';
 import { Icono } from '../../src/componentes/Icono';
 import { Colores } from '../../src/constantes/tema';
 import { useRouter } from 'expo-router';
+import { USUARIOS_MOCK } from '../../src/mocks/usuarios';
 
 export default function PantallaPerfil() {
-  const { usuario, cerrarSesion, cambiarRolDemo } = useAuth();
+  const { usuario, cerrarSesion, cambiarRolDemo, seleccionarUsuarioDemo } = useAuth();
   const { esOscuro, alternarTema, colores } = useTema();
   const router = useRouter();
 
@@ -123,113 +124,64 @@ export default function PantallaPerfil() {
           Selector Rápido de Cuenta (Defensa Oral)
         </Text>
         <Text style={[styles.seccionSubtitulo, { color: colores.textoSecundario }]}>
-          Permite simular la experiencia completa de los perfiles del PRD:
+          Permite simular la experiencia completa de los 4 perfiles oficiales:
         </Text>
 
-        <TouchableOpacity
-          style={[
-            styles.opcionRol,
-            {
-              backgroundColor: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? Colores.primarioClaro : colores.tarjeta,
-              borderColor: colores.borde,
-            },
-          ]}
-          onPress={() => cambiarRolDemo('jugador')}
-        >
-          <Icono
-            nombre="football-outline"
-            size={20}
-            color={usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#FFFFFF' : colores.texto}
-          />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text
-              style={[
-                styles.opcionRolNombre,
-                { color: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#FFFFFF' : colores.texto },
-              ]}
-            >
-              Emiliano Ruiz (Jugador Regular)
-            </Text>
-            <Text
-              style={[
-                styles.opcionRolDesc,
-                { color: usuario?.rol === 'jugador' && usuario?.id === 'usr-207' ? '#DCFCE7' : colores.textoSecundario },
-              ]}
-            >
-              Reserva turnos, consulta disponibilidad, muestra código QR.
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {USUARIOS_MOCK.map(u => {
+          const esActivo = usuario?.id === u.id;
+          let iconoNombre: any = 'football-outline';
+          let etiquetaRol = 'Jugador';
+          let subtitulo = 'Reserva turnos, consulta disponibilidad, muestra código QR.';
 
-        <TouchableOpacity
-          style={[
-            styles.opcionRol,
-            {
-              backgroundColor: usuario?.rol === 'encargado' ? Colores.primarioClaro : colores.tarjeta,
-              borderColor: colores.borde,
-            },
-          ]}
-          onPress={() => cambiarRolDemo('encargado')}
-        >
-          <Icono
-            nombre="camera-outline"
-            size={20}
-            color={usuario?.rol === 'encargado' ? '#FFFFFF' : colores.texto}
-          />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text
-              style={[
-                styles.opcionRolNombre,
-                { color: usuario?.rol === 'encargado' ? '#FFFFFF' : colores.texto },
-              ]}
-            >
-              Marcelo Quintana (Encargado de Cancha)
-            </Text>
-            <Text
-              style={[
-                styles.opcionRolDesc,
-                { color: usuario?.rol === 'encargado' ? '#DCFCE7' : colores.textoSecundario },
-              ]}
-            >
-              Ingreso con huella digital, escanea QR en puerta, valida presentes/ausentes.
-            </Text>
-          </View>
-        </TouchableOpacity>
+          if (u.rol === 'encargado') {
+            iconoNombre = 'camera-outline';
+            etiquetaRol = 'Encargado Predio';
+            subtitulo = 'Ingreso con huella digital, escanea QR en puerta, cobra turnos.';
+          } else if (u.rol === 'administrador') {
+            iconoNombre = 'shield-checkmark-outline';
+            etiquetaRol = 'Dir. Deportes';
+            subtitulo = 'Tablero macro, tarifas, reservas fijas y alta de personal.';
+          }
 
-        <TouchableOpacity
-          style={[
-            styles.opcionRol,
-            {
-              backgroundColor: usuario?.rol === 'administrador' ? Colores.primarioClaro : colores.tarjeta,
-              borderColor: colores.borde,
-            },
-          ]}
-          onPress={() => cambiarRolDemo('administrador')}
-        >
-          <Icono
-            nombre="shield-checkmark-outline"
-            size={20}
-            color={usuario?.rol === 'administrador' ? '#FFFFFF' : colores.texto}
-          />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text
+          return (
+            <TouchableOpacity
+              key={u.id}
               style={[
-                styles.opcionRolNombre,
-                { color: usuario?.rol === 'administrador' ? '#FFFFFF' : colores.texto },
+                styles.opcionRol,
+                {
+                  backgroundColor: esActivo ? Colores.primarioClaro : colores.tarjeta,
+                  borderColor: colores.borde,
+                },
               ]}
+              onPress={() => seleccionarUsuarioDemo(u)}
+              activeOpacity={0.7}
             >
-              Nahuel Ojeda (Director de Deportes)
-            </Text>
-            <Text
-              style={[
-                styles.opcionRolDesc,
-                { color: usuario?.rol === 'administrador' ? '#DCFCE7' : colores.textoSecundario },
-              ]}
-            >
-              Bloquea días por lluvia, agenda fijas semanales, actualiza precios por hora.
-            </Text>
-          </View>
-        </TouchableOpacity>
+              <Icono
+                nombre={iconoNombre}
+                size={20}
+                color={esActivo ? '#FFFFFF' : colores.texto}
+              />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text
+                  style={[
+                    styles.opcionRolNombre,
+                    { color: esActivo ? '#FFFFFF' : colores.texto },
+                  ]}
+                >
+                  {u.nombre} ({etiquetaRol})
+                </Text>
+                <Text
+                  style={[
+                    styles.opcionRolDesc,
+                    { color: esActivo ? '#DCFCE7' : colores.textoSecundario },
+                  ]}
+                >
+                  {subtitulo}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Ajustes: Modo Oscuro (Uso a la intemperie / noche) */}
