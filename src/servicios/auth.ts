@@ -72,7 +72,7 @@ export const AuthServicio = {
 
       let idFinal = id;
       if (id === 'usr-marcelo') idFinal = 'usr-damian';
-      else if (id === 'usr-nahuel' || id === 'usr-agostina') idFinal = 'usr-agustina';
+      else if (id === 'usr-nahuel') idFinal = 'usr-agostina';
       else if (id === 'usr-207') idFinal = 'usr-javier';
       else if (id === 'usr-lucia') idFinal = 'usr-ema';
 

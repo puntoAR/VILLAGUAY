@@ -286,7 +286,7 @@ export default function PantallaAdmin() {
             Acceso Exclusivo para Personal Municipal
           </Text>
           <Text style={[styles.subtituloRestringido, { color: colores.textoSecundario }]}>
-            Esta sección está reservada para el personal de administración y encargados del predio (DAMIAN G, Maria Agustina García).
+            Esta sección está reservada para el personal de administración y encargados del predio (DAMIAN G, Maria Agustina García, Maria Agostina García).
           </Text>
 
           <View style={styles.cajaDemoSwitch}>
@@ -306,7 +306,7 @@ export default function PantallaAdmin() {
               onPress={() => cambiarRolDemo('administrador')}
             >
               <Icono nombre="shield-checkmark" size={18} color="#FFFFFF" />
-              <Text style={styles.botonDemoTexto}>Probar como Dirección de Deportes</Text>
+              <Text style={styles.botonDemoTexto}>Probar como María Agostina (Dir. Deportes)</Text>
             </TouchableOpacity>
           </View>
         </View>

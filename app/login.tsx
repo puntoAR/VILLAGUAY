@@ -381,7 +381,7 @@ export default function PantallaLogin() {
                 </Text>
               </View>
               <Text style={[styles.descEvaluacion, { color: colores.textoSecundario }]}>
-                Seleccioná uno de los 4 perfiles oficiales del PRD con 1 toque:
+                Seleccioná uno de los 5 perfiles oficiales del PRD con 1 toque:
               </Text>
 
               <View style={styles.grillaPerfiles}>
@@ -392,7 +392,7 @@ export default function PantallaLogin() {
 
                   if (u.rol === 'encargado') {
                     badgeColor = Colores.secundario;
-                    etiquetaRol = u.nombre.toLowerCase().includes('agustina') || u.nombre.toLowerCase().includes('agostina')
+                    etiquetaRol = u.nombre.toLowerCase().includes('agustina')
                       ? 'Encargada Predio'
                       : 'Encargado Predio';
                   } else if (u.rol === 'administrador') {

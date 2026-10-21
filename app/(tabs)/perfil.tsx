@@ -124,7 +124,7 @@ export default function PantallaPerfil() {
           Selector Rápido de Cuenta (Defensa Oral)
         </Text>
         <Text style={[styles.seccionSubtitulo, { color: colores.textoSecundario }]}>
-          Permite simular la experiencia completa de los 4 perfiles oficiales:
+          Permite simular la experiencia completa de los 5 perfiles oficiales:
         </Text>
 
         {USUARIOS_MOCK.map(u => {
