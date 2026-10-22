@@ -259,42 +259,74 @@ export function inicializarBaseDatosSync() {
   }
 }
 
+// Ejecutar inicialización sincrónica inmediatamente al importar el módulo
+try {
+  inicializarBaseDatosSync();
+} catch (e) {
+  console.warn('[SQLite] Error en inicialización sincrónica inmediata:', e);
+}
+
 // Métodos de acceso sincrónicos
 export const BDService = {
   // Espacios
   obtenerEspaciosSync(filtroDeporte?: string): Espacio[] {
-    let sql = 'SELECT * FROM espacios WHERE activo = 1';
-    const params: any[] = [];
-    if (filtroDeporte && filtroDeporte !== 'todos') {
-      sql += ' AND deporteId = ?';
-      params.push(filtroDeporte);
+    try {
+      let sql = 'SELECT * FROM espacios WHERE activo = 1';
+      const params: any[] = [];
+      if (filtroDeporte && filtroDeporte !== 'todos') {
+        sql += ' AND deporteId = ?';
+        params.push(filtroDeporte);
+      }
+      const rows = db.getAllSync<any>(sql, params);
+      return rows.map(r => ({
+        ...r,
+        techado: Boolean(r.techado),
+        iluminacion: Boolean(r.iluminacion),
+        activo: Boolean(r.activo),
+        imagenes: JSON.parse(r.imagenes || '[]'),
+        coordenadas: { latitud: r.latitud, longitud: r.longitud },
+      }));
+    } catch {
+      inicializarBaseDatosSync();
+      return [];
     }
-    const rows = db.getAllSync<any>(sql, params);
-    return rows.map(r => ({
-      ...r,
-      techado: Boolean(r.techado),
-      iluminacion: Boolean(r.iluminacion),
-      activo: Boolean(r.activo),
-      imagenes: JSON.parse(r.imagenes || '[]'),
-      coordenadas: { latitud: r.latitud, longitud: r.longitud },
-    }));
   },
 
   obtenerEspacioPorIdSync(id: string): Espacio | null {
-    const r = db.getFirstSync<any>('SELECT * FROM espacios WHERE id = ?', [id]);
-    if (!r) return null;
-    return {
-      ...r,
-      techado: Boolean(r.techado),
-      iluminacion: Boolean(r.iluminacion),
-      activo: Boolean(r.activo),
-      imagenes: JSON.parse(r.imagenes || '[]'),
-      coordenadas: { latitud: r.latitud, longitud: r.longitud },
-    };
+    try {
+      const r = db.getFirstSync<any>('SELECT * FROM espacios WHERE id = ?', [id]);
+      if (!r) return null;
+      return {
+        ...r,
+        techado: Boolean(r.techado),
+        iluminacion: Boolean(r.iluminacion),
+        activo: Boolean(r.activo),
+        imagenes: JSON.parse(r.imagenes || '[]'),
+        coordenadas: { latitud: r.latitud, longitud: r.longitud },
+      };
+    } catch {
+      inicializarBaseDatosSync();
+      return null;
+    }
   },
 
   obtenerDeportesSync(): Deporte[] {
-    return db.getAllSync<Deporte>('SELECT * FROM deportes');
+    try {
+      return db.getAllSync<Deporte>('SELECT * FROM deportes');
+    } catch {
+      inicializarBaseDatosSync();
+      try {
+        return db.getAllSync<Deporte>('SELECT * FROM deportes');
+      } catch {
+        return [
+          { id: 'dep-futbol', nombre: 'Fútbol', icono: 'football-outline', color: '#16A34A' },
+          { id: 'dep-basquet', nombre: 'Básquet', icono: 'basketball-outline', color: '#EA580C' },
+          { id: 'dep-tenis', nombre: 'Tenis', icono: 'tennisball-outline', color: '#CA8A04' },
+          { id: 'dep-voley', nombre: 'Vóley', icono: 'baseball-outline', color: '#0284C7' },
+          { id: 'dep-padel', nombre: 'Pádel', icono: 'tennisball-outline', color: '#9333EA' },
+        ];
+      }
+    }
   },
 
   // Turnos

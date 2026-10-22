@@ -84,14 +84,12 @@ function NavegacionPrincipal() {
 }
 
 export default function RootLayout() {
-  // Inicialización sincrónica de SQLite al levantar la aplicación
-  useEffect(() => {
-    try {
-      inicializarBaseDatosSync();
-    } catch (e) {
-      console.warn('[SQLite] Error inicializando base de datos:', e);
-    }
-  }, []);
+  // Inicialización sincrónica inmediata de SQLite antes de montar las pantallas
+  try {
+    inicializarBaseDatosSync();
+  } catch (e) {
+    console.warn('[SQLite] Error inicializando base de datos:', e);
+  }
 
   return (
     <SafeAreaProvider>
