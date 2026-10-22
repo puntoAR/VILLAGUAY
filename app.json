@@ -35,7 +35,13 @@
         "USE_FINGERPRINT",
         "VIBRATE",
         "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -71,6 +77,13 @@
           "color": "#1A4D2E"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5e0aed43-a9ec-47c3-8351-9ed9214e6b6b"
+      }
+    },
+    "owner": "jgroman"
   }
 }
