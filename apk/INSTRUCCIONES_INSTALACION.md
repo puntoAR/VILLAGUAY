@@ -14,8 +14,8 @@ Conforme a las consignas de la cátedra, esta sección contiene los enlaces dire
 
 | Elemento Requerido | Enlace Oficial / Detalle |
 | :--- | :--- |
-| **Link del Build (APK Release)** | [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk) |
-| **Dashboard del Build en EAS** | [Ver Build en Expo Cloud](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/7480e0a5-bb8c-487b-b7d9-cf7acccf50fd) |
+| **Link del Build (APK Release)** | [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk) |
+| **Dashboard del Build en EAS** | [Ver Build en Expo Cloud](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/2eeab8c7-b570-4457-a018-ee0ba7ec411a) |
 | **Código Fuente (GitLab)** | [https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay](https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay) |
 | **ID de Proyecto EAS** | `5e0aed43-a9ec-47c3-8351-9ed9214e6b6b` |
 | **Identificador de Paquete** | `ar.gob.villaguay.reservasdeportivas` |
@@ -30,8 +30,8 @@ El archivo `.apk` generado es completamente **autónomo**: no requiere tener la 
 ### Paso a paso:
 1. **Descargar el instalador:**
    * Abrí en el navegador de tu celular el siguiente enlace:
-     👉 **[https://expo.dev/artifacts/eas/Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk](https://expo.dev/artifacts/eas/Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk)**
-   * Esperá a que termine de descargarse el archivo `Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk` (~132 MB).
+     👉 **[https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)**
+   * Esperá a que termine de descargarse el archivo `reservas-deportivas-villaguay.apk` (~132 MB).
 
 2. **Permitir instalación y aviso de Google Play Protect:**
    * Tocá la notificación de descarga o abrí la carpeta *Descargas* de tu teléfono.

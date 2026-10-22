@@ -4,7 +4,8 @@
 Aplicación móvil desarrollada según los requerimientos del PRD de la Dirección de Deportes de la Municipalidad de Villaguay, Entre Ríos, estructurada estrictamente para cumplir y acreditar los contenidos de las **Unidades 3, 4, 5 y 6** de la cátedra.
 
 > 📦 **Entrega Oficial del APK de Release**:
-> - **Dashboard de Build en Expo Cloud**: [Build #7480e0a5](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/7480e0a5-bb8c-487b-b7d9-cf7acccf50fd).
+> - **Descarga Directa del APK**: [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)
+> - **Dashboard de Build en Expo Cloud**: [Build #2eeab8c7](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/2eeab8c7-b570-4457-a018-ee0ba7ec411a).
 > - **Instrucciones de Instalación**: Consultá [apk/INSTRUCCIONES_INSTALACION.md](./apk/INSTRUCCIONES_INSTALACION.md).
 > - 📖 **Simulador de Defensa Oral**: Consultá las 25 preguntas y respuestas modelo en [PREGUNTAS_DEFENSA_ORAL.md](./PREGUNTAS_DEFENSA_ORAL.md).
 
