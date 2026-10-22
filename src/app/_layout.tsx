@@ -16,7 +16,11 @@ import { Colores } from '../constantes/tema';
 import { inicializarBaseDatosSync } from '../basedatos/sqlite';
 
 // Ignorar advertencias no críticas en emulador / Expo Go
-LogBox.ignoreLogs(['expo-notifications:']);
+LogBox.ignoreLogs([
+  'expo-notifications:',
+  'Cannot find native module',
+  'ExpoTopicSubscriptionModule',
+]);
 
 // Instanciar cliente global de TanStack Query
 const queryClient = new QueryClient({
