@@ -1,25 +1,19 @@
+// src/contexto/AuthContext.tsx
+// Unidad 3 y 6: Proveedor de Autenticación y resguardo seguro
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Usuario, Rol, DatosRegistro } from '../tipos';
+import { Usuario } from '../tipos';
 import { AuthServicio } from '../servicios/auth';
-import { USUARIOS_MOCK } from '../mocks/usuarios';
-import { esError } from '../servicios/api';
 
 interface AuthContextType {
   usuario: Usuario | null;
   autenticado: boolean;
   cargando: boolean;
   soportaBiometria: boolean;
-  iniciarSesion: (email: string, password?: string) => Promise<{ exito: boolean; mensajeError?: string }>;
-  registrar: (datos: DatosRegistro) => Promise<{ exito: boolean; mensajeError?: string }>;
+  iniciarSesion: (email: string, password?: string) => Promise<{ exito: boolean; mensaje?: string }>;
   cerrarSesion: () => Promise<void>;
-  reingresoBiometrico: () => Promise<boolean>;
-  cambiarRolDemo: (rol: Rol) => Promise<void>;
-  seleccionarUsuarioDemo: (usuario: Usuario) => Promise<void>;
-  alternarFavorito: (espacioId: string) => Promise<void>;
-  esEncargadoOAdmin: boolean;
-  esJugador: boolean;
-  esEncargado: boolean;
-  esAdmin: boolean;
+  autenticarBiometria: () => Promise<boolean>;
+  actualizarAvatar: (avatarUrl: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,16 +22,9 @@ const AuthContext = createContext<AuthContextType>({
   cargando: true,
   soportaBiometria: false,
   iniciarSesion: async () => ({ exito: false }),
-  registrar: async () => ({ exito: false }),
   cerrarSesion: async () => {},
-  reingresoBiometrico: async () => false,
-  cambiarRolDemo: async () => {},
-  seleccionarUsuarioDemo: async () => {},
-  alternarFavorito: async () => {},
-  esEncargadoOAdmin: false,
-  esJugador: false,
-  esEncargado: false,
-  esAdmin: false,
+  autenticarBiometria: async () => false,
+  actualizarAvatar: () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -47,37 +34,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const inicializar = async () => {
-      const activo = await AuthServicio.obtenerUsuarioActivo();
-      setUsuario(activo);
-      const bio = await AuthServicio.soporteBiometria();
+      const u = await AuthServicio.obtenerUsuarioSesion();
+      setUsuario(u);
+      const bio = await AuthServicio.soportaBiometria();
       setSoportaBiometria(bio);
       setCargando(false);
     };
-
     inicializar();
   }, []);
 
-  const iniciarSesion = async (
-    email: string,
-    password?: string
-  ): Promise<{ exito: boolean; mensajeError?: string }> => {
-    const respuesta = await AuthServicio.iniciarSesion(email, password);
-    if (esError(respuesta)) {
-      return { exito: false, mensajeError: respuesta.error.mensaje };
+  const iniciarSesion = async (email: string, password?: string) => {
+    const res = await AuthServicio.iniciarSesion(email, password);
+    if (res.exito && res.usuario) {
+      setUsuario(res.usuario);
+      return { exito: true };
     }
-    setUsuario(respuesta.datos.usuario);
-    return { exito: true };
-  };
-
-  const registrar = async (
-    datos: DatosRegistro
-  ): Promise<{ exito: boolean; mensajeError?: string }> => {
-    const respuesta = await AuthServicio.registrarUsuario(datos);
-    if (esError(respuesta)) {
-      return { exito: false, mensajeError: respuesta.error.mensaje };
-    }
-    setUsuario(respuesta.datos.usuario);
-    return { exito: true };
+    return { exito: false, mensaje: res.mensaje };
   };
 
   const cerrarSesion = async () => {
@@ -85,53 +57,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsuario(null);
   };
 
-  const reingresoBiometrico = async (): Promise<boolean> => {
-    const res = await AuthServicio.autenticarConBiometria(
-      'Verificá tu identidad para reingresar al sistema'
-    );
-    return res.exito;
+  const autenticarBiometria = async () => {
+    return await AuthServicio.autenticarConBiometria();
   };
 
-  const cambiarRolDemo = async (rol: Rol) => {
-    let u = USUARIOS_MOCK.find(x => x.rol === rol);
-    if (!u && rol === 'administrador') {
-      u = {
-        id: 'usr-direccion',
-        nombre: 'Dirección de Deportes',
-        email: 'direccion@villaguay.gob.ar',
-        telefono: '3455-998877',
-        rol: 'administrador',
-        espaciosFavoritos: ['esp-01', 'esp-03'],
-        cancelacionesTardias: 0,
-        ausencias: 0,
-        password: '123456',
-      };
-    } else if (!u) {
-      u = USUARIOS_MOCK[0];
+  const actualizarAvatar = (avatarUrl: string) => {
+    if (usuario) {
+      setUsuario({ ...usuario, avatarUrl });
     }
-    await AuthServicio.guardarUsuarioActivo(u);
-    setUsuario(u);
   };
-
-  const seleccionarUsuarioDemo = async (u: Usuario) => {
-    await AuthServicio.guardarUsuarioActivo(u);
-    setUsuario(u);
-  };
-
-  const alternarFavorito = async (espacioId: string) => {
-    if (!usuario) return;
-    const favs = usuario.espaciosFavoritos || [];
-    const existe = favs.includes(espacioId);
-    const nuevosFavs = existe ? favs.filter(id => id !== espacioId) : [...favs, espacioId];
-    const act = { ...usuario, espaciosFavoritos: nuevosFavs };
-    setUsuario(act);
-    await AuthServicio.guardarUsuarioActivo(act);
-  };
-
-  const esEncargadoOAdmin = usuario?.rol === 'encargado' || usuario?.rol === 'administrador';
-  const esJugador = usuario?.rol === 'jugador';
-  const esEncargado = usuario?.rol === 'encargado';
-  const esAdmin = usuario?.rol === 'administrador';
 
   return (
     <AuthContext.Provider
@@ -141,16 +75,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cargando,
         soportaBiometria,
         iniciarSesion,
-        registrar,
         cerrarSesion,
-        reingresoBiometrico,
-        cambiarRolDemo,
-        seleccionarUsuarioDemo,
-        alternarFavorito,
-        esEncargadoOAdmin,
-        esJugador,
-        esEncargado,
-        esAdmin,
+        autenticarBiometria,
+        actualizarAvatar,
       }}
     >
       {children}

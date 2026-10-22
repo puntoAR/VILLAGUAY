@@ -1,6 +1,9 @@
+// src/contexto/ThemeContext.tsx
+// Unidad 3 y 5: Gestión de temas claro/oscuro persistido con AsyncStorage
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { PreferenciasKV } from '../basedatos/kvstore';
+import { PreferenciasStorage } from '../basedatos/asyncstorage';
 import { Colores } from '../constantes/tema';
 
 interface ThemeContextType {
@@ -17,10 +20,10 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const esquemaSistema = useColorScheme();
-  const [esOscuro, setEsOscuro] = React.useState(esquemaSistema === 'dark');
+  const [esOscuro, setEsOscuro] = useState(esquemaSistema === 'dark');
 
-  React.useEffect(() => {
-    PreferenciasKV.obtener('tema_preferido').then(val => {
+  useEffect(() => {
+    PreferenciasStorage.obtener('tema_app').then(val => {
       if (val === 'oscuro') setEsOscuro(true);
       else if (val === 'claro') setEsOscuro(false);
       else setEsOscuro(esquemaSistema === 'dark');
@@ -30,7 +33,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const alternarTema = async () => {
     const nuevo = !esOscuro;
     setEsOscuro(nuevo);
-    await PreferenciasKV.guardar('tema_preferido', nuevo ? 'oscuro' : 'claro');
+    await PreferenciasStorage.guardar('tema_app', nuevo ? 'oscuro' : 'claro');
   };
 
   const colores = esOscuro ? Colores.oscuro : Colores.claro;

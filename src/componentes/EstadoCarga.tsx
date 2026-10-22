@@ -1,11 +1,11 @@
+// src/componentes/EstadoCarga.tsx
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useTema } from '../contexto/ThemeContext';
 import { Colores } from '../constantes/tema';
+import { useTema } from '../contexto/ThemeContext';
 
-export const EstadoCarga: React.FC<{ mensaje?: string }> = ({ mensaje = 'Cargando información...' }) => {
+export const EstadoCarga: React.FC<{ mensaje?: string }> = ({ mensaje = 'Cargando datos...' }) => {
   const { colores } = useTema();
-
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
       <ActivityIndicator size="large" color={Colores.primarioClaro} />
@@ -20,10 +20,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    gap: 12,
   },
   texto: {
-    marginTop: 14,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

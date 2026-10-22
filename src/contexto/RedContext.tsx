@@ -1,11 +1,23 @@
-import React, { createContext, useContext } from 'react';
-import { useEstadoRed } from '../servicios/red';
+// src/contexto/RedContext.tsx
+// Unidad 5: Contexto de conectividad a internet
 
-const RedContext = createContext<{ conectado: boolean }>({ conectado: true });
+import React, { createContext, useContext } from 'react';
+import { useConectividadRed } from '../servicios/red';
+
+interface RedContextType {
+  conectado: boolean;
+}
+
+const RedContext = createContext<RedContextType>({ conectado: true });
 
 export const RedProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const conectado = useEstadoRed();
-  return <RedContext.Provider value={{ conectado }}>{children}</RedContext.Provider>;
+  const conectado = useConectividadRed();
+
+  return (
+    <RedContext.Provider value={{ conectado }}>
+      {children}
+    </RedContext.Provider>
+  );
 };
 
 export const useRed = () => useContext(RedContext);

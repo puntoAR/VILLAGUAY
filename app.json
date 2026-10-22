@@ -12,8 +12,8 @@
       "bundleIdentifier": "ar.gob.villaguay.reservasdeportivas",
       "infoPlist": {
         "NSCameraUsageDescription": "Permite escanear el código QR del turno en la entrada del complejo deportivo.",
-        "NSLocationWhenInUseUsageDescription": "Permite ubicar los complejos deportivos en el mapa y calcular la distancia.",
-        "NSFaceIDUsageDescription": "Permite a los encargados validar su identidad antes de controlar los ingresos."
+        "NSLocationWhenInUseUsageDescription": "Permite ubicar los complejos deportivos de Villaguay en el mapa.",
+        "NSFaceIDUsageDescription": "Permite validar tu identidad mediante biometría para ingresar al sistema."
       }
     },
     "android": {
@@ -29,9 +29,9 @@
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
         "VIBRATE",
+        "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED"
-      ],
-      "predictiveBackGestureEnabled": false
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,20 +50,20 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Permite ubicar los complejos deportivos en el mapa y calcular la distancia."
+          "locationWhenInUsePermission": "Permite ubicar los complejos deportivos en el mapa y calcular distancias."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Permite a los encargados validar su identidad antes de controlar los ingresos."
+          "faceIDPermission": "Permite validar tu identidad mediante biometría."
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#2E7D32"
+          "color": "#1A4D2E"
         }
       ]
     ]

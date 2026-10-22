@@ -1,3 +1,6 @@
+// src/servicios/red.ts
+// Unidad 5: Detección de conectividad con expo-network para modo sin conexión
+
 import * as Network from 'expo-network';
 import { useState, useEffect } from 'react';
 
@@ -12,8 +15,8 @@ export const RedServicio = {
   }
 };
 
-export function useEstadoRed() {
-  const [conectado, setConectado] = useState(true);
+export function useConectividadRed() {
+  const [conectado, setConectado] = useState<boolean>(true);
 
   useEffect(() => {
     let montado = true;
@@ -23,7 +26,7 @@ export function useEstadoRed() {
     };
 
     verificar();
-    const intervalo = setInterval(verificar, 6000);
+    const intervalo = setInterval(verificar, 8000);
     return () => {
       montado = false;
       clearInterval(intervalo);

@@ -1,36 +1,42 @@
+// src/servicios/haptica.ts
+// Unidad 4: Retroalimentación táctil con expo-haptics
+
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
 export const Haptica = {
-  // Vibración para ingreso exitoso verificado en la puerta
-  async exitoIngreso() {
+  async seleccion() {
     if (Platform.OS === 'web') return;
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await Haptics.selectionAsync();
     } catch {}
   },
 
-  // Vibración para ingreso inválido, turno vencido o cancha errónea
-  async errorIngreso() {
-    if (Platform.OS === 'web') return;
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } catch {}
-  },
-
-  // Toque suave para selección de turnos en grilla
-  async seleccionSuave() {
+  async impactoSuave() {
     if (Platform.OS === 'web') return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
   },
 
-  // Impacto medio al confirmar reserva
-  async confirmacion() {
+  async impactoMedio() {
     if (Platform.OS === 'web') return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+  },
+
+  async exito() {
+    if (Platform.OS === 'web') return;
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  },
+
+  async error() {
+    if (Platform.OS === 'web') return;
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch {}
   }
 };
