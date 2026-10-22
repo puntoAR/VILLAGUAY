@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "reservasvillaguay",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1A4D2E"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ar.gob.villaguay.reservasdeportivas",
@@ -25,7 +20,7 @@
       "package": "ar.gob.villaguay.reservasdeportivas",
       "adaptiveIcon": {
         "backgroundColor": "#1A4D2E",
-        "foregroundImage": "./assets/icon.png"
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [
         "CAMERA",
