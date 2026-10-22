@@ -16,12 +16,12 @@ export default function PantallaLogin() {
   const { colores } = useTema();
   const { iniciarSesion, autenticarBiometria, soportaBiometria } = useAuth();
 
-  const [email, setEmail] = useState('martin@villaguay.gob.ar');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const manejarIngreso = async () => {
-    if (!email.trim()) {
-      Alert.alert('Datos requeridos', 'Por favor ingresá tu correo electrónico.');
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Datos requeridos', 'Por favor ingresá tu correo electrónico y tu contraseña.');
       return;
     }
 
@@ -71,7 +71,7 @@ export default function PantallaLogin() {
               style={[styles.input, { color: colores.texto }]}
               value={email}
               onChangeText={setEmail}
-              placeholder="correo@ejemplo.com"
+              placeholder="martin@villaguay.gob.ar"
               placeholderTextColor={colores.textoMuted}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -87,7 +87,7 @@ export default function PantallaLogin() {
               style={[styles.input, { color: colores.texto }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Contraseña"
+              placeholder="••••••••"
               placeholderTextColor={colores.textoMuted}
               secureTextEntry
             />

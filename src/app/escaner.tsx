@@ -68,7 +68,7 @@ export default function PantallaEscanerQR() {
   return (
     <View style={styles.contenedor}>
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],

@@ -63,12 +63,12 @@ export const AuthServicio = {
   // Obtener usuario guardado en sesión activa
   async obtenerUsuarioSesion(): Promise<Usuario | null> {
     if (Platform.OS === 'web') {
-      return BDService.buscarUsuarioPorEmailSync('martin@villaguay.gob.ar');
+      return null;
     }
     try {
       const id = await SecureStore.getItemAsync(CLAVE_USUARIO_ID);
       if (!id) return null;
-      const dbUser = BDService.buscarUsuarioPorEmailSync('martin@villaguay.gob.ar');
+      const dbUser = BDService.obtenerUsuarioPorIdSync(id);
       return dbUser;
     } catch {
       return null;

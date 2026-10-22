@@ -1,8 +1,25 @@
 // src/servicios/notificaciones.ts
 // Unidad 4: Notificaciones locales, canales prioritarios en Android y comportamiento en primer plano
 
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+// Silenciar advertencia informativa de Expo Go en SDK 53
+LogBox.ignoreLogs([
+  '[expo-notifications]',
+  'Push notifications (remote notifications) are unavailable in Expo Go',
+  'Cannot find native module',
+  'ExpoTopicSubscriptionModule',
+]);
+
+// Interceptar advertencia de consola informativa de expo-notifications en Expo Go
+const advertenciaOriginal = console.warn;
+console.warn = (...args: any[]) => {
+  if (typeof args[0] === 'string' && args[0].includes('[expo-notifications]')) {
+    return;
+  }
+  advertenciaOriginal(...args);
+};
 
 const esExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 

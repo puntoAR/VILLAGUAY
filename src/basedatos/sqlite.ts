@@ -473,6 +473,13 @@ export const BDService = {
     );
   },
 
+  obtenerUsuarioPorIdSync(id: string): Usuario | null {
+    return db.getFirstSync<Usuario>(
+      'SELECT * FROM usuarios WHERE id = ?',
+      [id]
+    );
+  },
+
   actualizarAvatarUsuarioSync(usuarioId: string, avatarUrl: string) {
     db.runSync('UPDATE usuarios SET avatarUrl = ? WHERE id = ?', [avatarUrl, usuarioId]);
   }
