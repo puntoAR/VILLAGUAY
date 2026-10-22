@@ -1,5 +1,5 @@
 // src/app/(tabs)/mapa.tsx
-// Unidad 4: Geolocalización con expo-location y visualización interactiva con react-native-maps
+// Mapa de complejos deportivos
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';

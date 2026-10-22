@@ -1,5 +1,5 @@
 // src/servicios/red.ts
-// Unidad 5: Detección de conectividad con expo-network para modo sin conexión
+// Detección de conectividad a internet
 
 import * as Network from 'expo-network';
 import { useState, useEffect } from 'react';

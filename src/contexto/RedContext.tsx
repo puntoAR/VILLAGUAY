@@ -1,5 +1,5 @@
 // src/contexto/RedContext.tsx
-// Unidad 5: Contexto de conectividad a internet
+// Contexto de conectividad
 
 import React, { createContext, useContext } from 'react';
 import { useConectividadRed } from '../servicios/red';

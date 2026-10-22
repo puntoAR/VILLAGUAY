@@ -1,11 +1,11 @@
 // src/servicios/api.ts
-// Unidad 5: Cliente HTTP con URL base, token Bearer, AbortController y sincronización con SQLite
+// Cliente de API y sincronización con base local
 
 import * as SecureStore from 'expo-secure-store';
 import { Espacio, Turno, Reserva, RespuestaApi } from '../tipos';
 import { BDService } from '../basedatos/sqlite';
 
-// URL base de la cátedra (o mock backend conmutativo)
+// URL del backend
 export const API_BASE_URL = 'https://api-reservas-villaguay.uner.edu.ar/v1';
 
 // Cliente HTTP configurable con soporte para AbortController
@@ -71,7 +71,7 @@ export const ApiCatedraServicio = {
     const timeout = setTimeout(() => controller.abort(), 2500); // 2.5s timeout para no trabar la UI
 
     try {
-      // Intento de llamada remota a la API de la cátedra
+      // Llamada remota al backend
       const datosRemotos = await clienteHttp.get<Espacio[]>(
         `/espacios${filtroDeporte ? `?deporteId=${filtroDeporte}` : ''}`,
         controller.signal

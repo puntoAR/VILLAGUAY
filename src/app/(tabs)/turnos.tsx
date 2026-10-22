@@ -1,6 +1,5 @@
 // src/app/(tabs)/turnos.tsx
-// Unidad 3: Listado de reservas personales y visualización de QR
-// Unidad 5: Cancelación con useMutation e invalidación automática de caché (invalidateQueries)
+// Listado de reservas y código QR
 
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Pressable } from 'react-native';

@@ -33,11 +33,14 @@ El archivo `.apk` generado es completamente **autónomo**: no requiere tener la 
      👉 **[https://expo.dev/artifacts/eas/Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk](https://expo.dev/artifacts/eas/Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk)**
    * Esperá a que termine de descargarse el archivo `Mbg5u_2e1Z5Zt9qwlHyE6bTr8tk3M4x-S3lFebe1yJ8.apk` (~132 MB).
 
-2. **Permitir instalación de fuentes desconocidas:**
+2. **Permitir instalación y aviso de Google Play Protect:**
    * Tocá la notificación de descarga o abrí la carpeta *Descargas* de tu teléfono.
    * Si Android muestra una advertencia de seguridad (*"Por motivos de seguridad, tu teléfono no tiene permitido instalar apps desconocidas de esta fuente"*):
      * Tocá en **Ajustes / Configuración**.
      * Activá la casilla o switch **"Permitir desde esta fuente"** (Chrome, Drive o Gestor de Archivos).
+   * **Aviso de Google Play Protect** (*"Se bloqueó la app para proteger tu dispositivo"*):
+     * Dado que es una app académica firmada con certificado de desarrollo propio y no proviene de Play Store, tocá el texto:  
+       👉 **"Instalar de todas formas"** *(ubicado arriba del botón azul "Entendido")*.
 
 3. **Instalar y Ejecutar:**
    * Tocá **Instalar**.
@@ -48,17 +51,17 @@ El archivo `.apk` generado es completamente **autónomo**: no requiere tener la 
 
 ## 🔑 3. Cuentas de Acceso y Credenciales de Prueba
 
-Para facilitar la evaluación de la cátedra durante la defensa, la app incluye botones de autocompletado en un toque dentro de la pantalla de Login:
+Para facilitar las pruebas, la pantalla de Login incluye botones de acceso rápido de un toque:
 
-### A) Cuenta Jugador / Titular:
-* **Correo:** `martin@villaguay.gob.ar`
-* **Contraseña:** `password123`
+### A) Cuenta Usuario / Jugador:
+* **Correo:** `usuario@villaguay.gob.ar`
+* **Contraseña:** `usuario123`
 * **Rol:** Jugador regular. Puede reservar turnos, ver sus reservas activas, recibir recordatorios y generar su carnet de acceso QR.
 
 ### B) Cuenta Encargado de Complejo:
 * **Correo:** `encargado@villaguay.gob.ar`
-* **Contraseña:** `password123`
-* **Rol:** Encargado municipal. Tiene habilitado el escáner de cámara integrado para validar accesos en la puerta de los complejos deportivos.
+* **Contraseña:** `admin123`
+* **Rol:** Encargado. Tiene habilitado el escáner de cámara integrado para validar accesos en la puerta de los complejos deportivos.
 
 ### C) Ingreso Biométrico:
 * Tocando el botón **"Ingresar con Huella o Face ID"**, la app solicita confirmación biométrica mediante `expo-local-authentication` y autentica automáticamente.

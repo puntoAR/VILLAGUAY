@@ -1,5 +1,5 @@
 // src/componentes/BannerDesconexion.tsx
-// Unidad 5: Banner que informa modo sin conexión basado en expo-network
+// Banner visual de estado sin conexión
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';

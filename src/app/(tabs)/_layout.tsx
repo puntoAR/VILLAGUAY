@@ -1,5 +1,5 @@
 // src/app/(tabs)/_layout.tsx
-// Unidad 3: Navegación por pestañas (Tabs) con 4 secciones recomendadas (3 a 5)
+// Navegación principal por pestañas
 
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';

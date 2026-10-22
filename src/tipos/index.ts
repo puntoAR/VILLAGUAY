@@ -1,5 +1,5 @@
 // src/tipos/index.ts
-// Tipos del Dominio: Reservas Deportivas Villaguay (Cátedra UNER)
+// Tipos y modelos de datos
 
 export interface Coordenadas {
   latitud: number;

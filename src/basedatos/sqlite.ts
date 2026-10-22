@@ -1,11 +1,11 @@
 // src/basedatos/sqlite.ts
-// Unidad 5: Base de datos relacional con API Sincrónica estricta de expo-sqlite
+// Base de datos local SQLite
 
 import * as SQLite from 'expo-sqlite';
 import { Espacio, Deporte, Reserva, Turno, Usuario } from '../tipos';
 
 // Apertura sincrónica de la base de datos
-export const db = SQLite.openDatabaseSync('reservas_villaguay_catedra.db');
+export const db = SQLite.openDatabaseSync('reservas_villaguay.db');
 
 // Inicialización sincrónica del esquema
 export function inicializarBaseDatosSync() {
@@ -199,26 +199,26 @@ export function inicializarBaseDatosSync() {
       const usuariosIniciales: Usuario[] = [
         {
           id: 'usr-jugador-1',
-          nombre: 'Martín Fernández',
-          email: 'martin@villaguay.gob.ar',
+          nombre: 'Usuario Demo',
+          email: 'usuario@villaguay.gob.ar',
           telefono: '3455-401122',
           rol: 'jugador',
-          password: 'password123',
+          password: 'usuario123',
         },
         {
           id: 'usr-encargado-1',
-          nombre: 'Carlos Benítez (Encargado)',
+          nombre: 'Encargado Turnos',
           email: 'encargado@villaguay.gob.ar',
           telefono: '3455-442211',
           rol: 'encargado',
-          password: 'password123',
+          password: 'admin123',
         },
       ];
 
       for (const u of usuariosIniciales) {
         db.runSync(
           'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, avatarUrl, password) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [u.id, u.nombre, u.email, u.telefono, u.rol, u.avatarUrl || null, u.password || 'password123']
+          [u.id, u.nombre, u.email, u.telefono, u.rol, u.avatarUrl || null, u.password || 'usuario123']
         );
       }
 

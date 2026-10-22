@@ -1,7 +1,5 @@
 // src/app/(tabs)/index.tsx
-// Unidad 3: Listado de espacios y filtros con componentes primitivos (Pressable, View, Text)
-// Unidad 4: Integración del acelerómetro con shake para resetear filtros (expo-sensors)
-// Unidad 5: Consulta de datos y caché con useQuery de TanStack Query
+// Catálogo principal de espacios deportivos
 
 import React, { useState } from 'react';
 import { View, Text, FlatList, TextInput, StyleSheet, Pressable, RefreshControl } from 'react-native';
@@ -22,7 +20,7 @@ export default function PantallaCanchas() {
   const [deporteFiltro, setDeporteFiltro] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState<string>('');
 
-  // Unidad 5: Lectura mediante TanStack Query con re-fetch y caché automática
+  // Consulta de espacios con caché
   const {
     data: espacios = [],
     isLoading,
@@ -33,10 +31,10 @@ export default function PantallaCanchas() {
     queryFn: () => ApiCatedraServicio.obtenerEspacios(deporteFiltro === 'todos' ? undefined : deporteFiltro),
   });
 
-  // Lista de deportes obtenida sincrónicamente desde SQLite
+  // Lista de deportes desde SQLite
   const deportes = [{ id: 'todos', nombre: 'Todos' }, ...BDService.obtenerDeportesSync()];
 
-  // Unidad 4: Al sacudir el teléfono (shake), resetea los filtros de búsqueda
+  // Resetear filtros al agitar el dispositivo
   useAcelerometroShake(() => {
     setBusqueda('');
     setDeporteFiltro('todos');

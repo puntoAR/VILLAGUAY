@@ -1,5 +1,5 @@
 // src/servicios/haptica.ts
-// Unidad 4: Retroalimentación táctil con expo-haptics
+// Efectos de vibración háptica
 
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';

@@ -1,6 +1,5 @@
 // src/componentes/TarjetaEspacio.tsx
-// Unidad 3: Componente primitivo Pressable y navegación declarativa con Link prefetch
-// Unidad 4: Renderizado eficiente con Image de expo-image
+// Tarjeta de espacio deportivo
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';

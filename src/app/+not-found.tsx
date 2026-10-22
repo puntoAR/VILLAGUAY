@@ -1,5 +1,5 @@
 // src/app/+not-found.tsx
-// Unidad 3: Manejo de rutas inexistentes o errores 404 en Expo Router
+// Pantalla de ruta no encontrada
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';

@@ -1,6 +1,5 @@
 // src/app/login.tsx
-// Unidad 3: Pantalla de inicio de sesión con navegación imperativa (router.replace)
-// Unidad 6: Inicio biométrico con expo-local-authentication y resguardo seguro
+// Pantalla de inicio de sesión
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, Alert } from 'react-native';
@@ -40,7 +39,7 @@ export default function PantallaLogin() {
     const ok = await autenticarBiometria();
     if (ok) {
       Haptica.exito();
-      await iniciarSesion('martin@villaguay.gob.ar', 'password123');
+      await iniciarSesion('usuario@villaguay.gob.ar', 'usuario123');
       router.replace('/(tabs)');
     } else {
       Haptica.error();
@@ -71,7 +70,7 @@ export default function PantallaLogin() {
               style={[styles.input, { color: colores.texto }]}
               value={email}
               onChangeText={setEmail}
-              placeholder="martin@villaguay.gob.ar"
+              placeholder="usuario@villaguay.gob.ar"
               placeholderTextColor={colores.textoMuted}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -119,30 +118,30 @@ export default function PantallaLogin() {
           </Pressable>
         )}
 
-        {/* Acceso Rápido para Prueba de Cátedra */}
+        {/* Accesos Rápidos de Prueba */}
         <View style={[styles.tarjetaPrueba, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
           <Text style={[styles.tituloPrueba, { color: colores.textoSecundario }]}>
-            CUENTAS DE PRUEBA CÁTEDRA:
+            ACCESOS RÁPIDOS DE PRUEBA:
           </Text>
           <View style={styles.filaPrueba}>
             <Pressable
               style={[styles.botonMiniPrueba, { backgroundColor: Colores.primarioClaro }]}
               onPress={() => {
-                setEmail('martin@villaguay.gob.ar');
-                setPassword('password123');
+                setEmail('usuario@villaguay.gob.ar');
+                setPassword('usuario123');
               }}
             >
-              <Text style={styles.textoMiniPrueba}>Jugador (Martín)</Text>
+              <Text style={styles.textoMiniPrueba}>Usuario</Text>
             </Pressable>
 
             <Pressable
               style={[styles.botonMiniPrueba, { backgroundColor: Colores.acento }]}
               onPress={() => {
                 setEmail('encargado@villaguay.gob.ar');
-                setPassword('password123');
+                setPassword('admin123');
               }}
             >
-              <Text style={[styles.textoMiniPrueba, { color: '#000' }]}>Encargado (Carlos)</Text>
+              <Text style={[styles.textoMiniPrueba, { color: '#000' }]}>Encargado</Text>
             </Pressable>
           </View>
         </View>

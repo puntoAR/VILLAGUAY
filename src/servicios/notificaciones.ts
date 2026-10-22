@@ -1,5 +1,5 @@
 // src/servicios/notificaciones.ts
-// Unidad 4: Notificaciones locales, canales prioritarios en Android y comportamiento en primer plano
+// Notificaciones locales y canal para Android
 
 import { Platform, LogBox } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -49,7 +49,7 @@ if (Notifications && typeof Notifications.setNotificationHandler === 'function')
 }
 
 export const NotificacionesServicio = {
-  // 2. Inicializar canal prioritario para Android (Exigencia de la Cátedra)
+  // Canal de notificaciones para Android
   async configurarCanalAndroid(): Promise<void> {
     if (Platform.OS === 'android' && Notifications && typeof Notifications.setNotificationChannelAsync === 'function') {
       try {

@@ -1,5 +1,5 @@
 // src/contexto/ThemeContext.tsx
-// Unidad 3 y 5: Gestión de temas claro/oscuro persistido con AsyncStorage
+// Contexto para tema claro y oscuro
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';

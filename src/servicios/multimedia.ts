@@ -1,6 +1,5 @@
 // src/servicios/multimedia.ts
-// Unidad 4: Sistema de Archivos orientado a objetos (File, Directory, Paths)
-// y selección de fotos con expo-image-picker
+// Selección y persistencia de fotos de perfil
 
 import * as ImagePicker from 'expo-image-picker';
 import { Paths, File, Directory } from 'expo-file-system';
@@ -27,9 +26,7 @@ export const MultimediaServicio = {
 
     const uriOriginalEnCache = resultado.assets[0].uri;
 
-    // APLICACIÓN DE LA REGLA CRÍTICA DE LA CÁTEDRA:
-    // Los recursos del selector quedan en Paths.cache y el sistema operativo puede borrarlos.
-    // Deben copiarse explícitamente a Paths.document para persistencia permanente.
+    // Copiar a directorio permanente de la app
     return await this.persistirFotoEnDocumentos(uriOriginalEnCache);
   },
 

@@ -1,5 +1,5 @@
 // src/servicios/sensores.ts
-// Unidad 4: Sensores del dispositivo (Acelerómetro) siguiendo el ciclo formal exigido por la cátedra
+// Detección de agitación del dispositivo (shake)
 
 import { useEffect } from 'react';
 import { Accelerometer } from 'expo-sensors';

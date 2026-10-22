@@ -1,5 +1,5 @@
 // src/contexto/AuthContext.tsx
-// Unidad 3 y 6: Proveedor de Autenticación y resguardo seguro
+// Contexto de autenticación
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Usuario } from '../tipos';

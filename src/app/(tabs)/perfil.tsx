@@ -1,7 +1,5 @@
 // src/app/(tabs)/perfil.tsx
-// Unidad 3: Sistema de temas claro/oscuro con AsyncStorage
-// Unidad 4: Selector de foto con expo-image-picker y persistencia en Paths.document con expo-file-system
-// Unidad 6: Biometría local (expo-local-authentication) y enlaces web (expo-web-browser)
+// Perfil de usuario y configuración
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, Alert, Pressable, ScrollView } from 'react-native';
@@ -23,7 +21,7 @@ export default function PantallaPerfil() {
 
   const [cambiandoFoto, setCambiandoFoto] = useState(false);
 
-  // Unidad 4: Selector de foto y persistencia de Paths.cache a Paths.document
+  // Cambiar foto y guardar en almacenamiento permanente
   const cambiarFotoPerfil = async () => {
     try {
       setCambiandoFoto(true);
@@ -33,7 +31,7 @@ export default function PantallaPerfil() {
         BDService.actualizarAvatarUsuarioSync(usuario.id, uriPersistida);
         actualizarAvatar(uriPersistida);
         Haptica.exito();
-        Alert.alert('Foto actualizada', 'Tu foto de perfil fue persistida en el almacenamiento seguro del dispositivo.');
+        Alert.alert('Foto actualizada', 'Tu foto de perfil fue guardada correctamente.');
       }
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'No se pudo actualizar la foto.');
@@ -42,7 +40,7 @@ export default function PantallaPerfil() {
     }
   };
 
-  // Unidad 6: Prueba de biometría local
+  // Verificación de biometría
   const probarBiometria = async () => {
     Haptica.seleccion();
     const ok = await autenticarBiometria();
@@ -55,7 +53,7 @@ export default function PantallaPerfil() {
     }
   };
 
-  // Unidad 6: Enlace externo con expo-web-browser
+  // Abrir portal institucional
   const abrirPortalMunicipal = async () => {
     Haptica.seleccion();
     await WebBrowser.openBrowserAsync('https://villaguay.gob.ar/deportes');
@@ -99,10 +97,10 @@ export default function PantallaPerfil() {
 
         <View style={styles.infoUsuario}>
           <Text style={[styles.nombre, { color: colores.texto }]}>
-            {usuario?.nombre || 'Martín Fernández'}
+            {usuario?.nombre || 'Usuario'}
           </Text>
           <Text style={[styles.email, { color: colores.textoSecundario }]}>
-            {usuario?.email || 'martin@villaguay.gob.ar'}
+            {usuario?.email || 'usuario@villaguay.gob.ar'}
           </Text>
           <Text style={[styles.rol, { color: Colores.primarioClaro }]}>
             Rol: {(usuario?.rol || 'jugador').toUpperCase()}

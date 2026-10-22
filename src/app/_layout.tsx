@@ -1,6 +1,5 @@
 // src/app/_layout.tsx
-// Unidad 3: Enrutador raíz con Stack, layout de contenedores y proveedores globales
-// Unidad 5: Inicialización sincrónica de SQLite y QueryClientProvider
+// Enrutador principal y proveedores globales
 
 import React, { useEffect } from 'react';
 import { View, StyleSheet, LogBox, ActivityIndicator } from 'react-native';
@@ -40,7 +39,7 @@ function NavegacionPrincipal() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Control de Acceso y Protección de Rutas (Unidad 3 y 6)
+  // Control de sesión y redirección
   useEffect(() => {
     if (cargando) return;
 

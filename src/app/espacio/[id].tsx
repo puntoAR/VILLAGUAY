@@ -1,8 +1,5 @@
 // src/app/espacio/[id].tsx
-// Unidad 3: Ruta dinámica con useLocalSearchParams y componentes primitivos
-// Unidad 4: expo-video y programación de recordatorio local con expo-notifications
-// Unidad 5: Turnos y creación de reserva mediante useQuery y useMutation de TanStack Query
-// Unidad 6: Modelado IoT para iluminación nocturna
+// Detalle de espacio deportivo y reserva de turnos
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert } from 'react-native';

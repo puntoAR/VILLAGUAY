@@ -1,5 +1,5 @@
 // src/componentes/ReproductorVideo.tsx
-// Unidad 4: Reproducción de video nativo con expo-video (useVideoPlayer y VideoView)
+// Reproductor de video
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';

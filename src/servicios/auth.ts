@@ -1,5 +1,5 @@
 // src/servicios/auth.ts
-// Unidad 6: Autenticación, resguardo seguro de credenciales con expo-secure-store y biometría
+// Servicio de autenticación y credenciales
 
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';

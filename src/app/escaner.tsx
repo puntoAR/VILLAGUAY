@@ -1,5 +1,5 @@
 // src/app/escaner.tsx
-// Unidad 4: Escaneo de códigos QR en vivo con CameraView y gestión de permisos de expo-camera
+// Lector de códigos QR con cámara
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';

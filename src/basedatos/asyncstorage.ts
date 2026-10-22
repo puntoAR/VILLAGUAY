@@ -1,5 +1,5 @@
 // src/basedatos/asyncstorage.ts
-// Unidad 5: Persistencia clave-valor para configuraciones y preferencias livianas
+// Almacenamiento local de preferencias
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
