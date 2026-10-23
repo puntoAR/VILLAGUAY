@@ -154,7 +154,7 @@ export default function PantallaLogin() {
               <Pressable
                 style={[styles.botonMiniPrueba, { backgroundColor: Colores.acento }]}
                 onPress={() => {
-                  setEmail('marcelo@villaguay.gob.ar');
+                  setEmail('encargado@villaguay.gob.ar');
                   setPassword('password123');
                 }}
               >
@@ -164,7 +164,7 @@ export default function PantallaLogin() {
               <Pressable
                 style={[styles.botonMiniPrueba, { backgroundColor: '#3B82F6' }]}
                 onPress={() => {
-                  setEmail('nahuel@villaguay.gob.ar');
+                  setEmail('director@villaguay.gob.ar');
                   setPassword('password123');
                 }}
               >

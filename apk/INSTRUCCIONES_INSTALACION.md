@@ -60,10 +60,15 @@ Para facilitar las pruebas, la pantalla de Login incluye botones de acceso rápi
 
 ### B) Cuenta Encargado de Complejo:
 * **Correo:** `encargado@villaguay.gob.ar`
-* **Contraseña:** `admin123`
+* **Contraseña:** `admin123` (o `password123`)
 * **Rol:** Encargado. Tiene habilitado el escáner de cámara integrado para validar accesos en la puerta de los complejos deportivos.
 
-### C) Ingreso Biométrico:
+### C) Cuenta Director de Deportes:
+* **Correo:** `director@villaguay.gob.ar`
+* **Contraseña:** `admin123` (o `password123`)
+* **Rol:** Administrador. Gestión institucional y supervisión de espacios.
+
+### D) Ingreso Biométrico:
 * Tocando el botón **"Ingresar con Huella o Face ID"**, la app solicita confirmación biométrica mediante `expo-local-authentication` y autentica automáticamente.
 
 ---
