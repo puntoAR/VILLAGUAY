@@ -2,7 +2,7 @@
 // Enrutador principal y proveedores de la aplicación
 
 import React, { useEffect } from 'react';
-import { View, LogBox, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, LogBox, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -50,56 +50,89 @@ function NavegacionPrincipal() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
-      <StatusBar style={esOscuro ? 'light' : 'dark'} />
-      <BannerDesconexion />
-
-      <Stack
-        initialRouteName={usuario ? '(tabs)' : 'login'}
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: esOscuro ? Colores.oscuro.tarjeta : Colores.primario,
-          },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 18,
-          },
-          contentStyle: {
+    <View style={[styles.contenedorExterior, { backgroundColor: esOscuro ? '#0B130E' : '#E2E8F0' }]}>
+      <View
+        style={[
+          styles.marcoResponsive,
+          {
             backgroundColor: colores.fondo,
+            borderColor: esOscuro ? '#1E3A27' : '#CBD5E1',
           },
-        }}
+        ]}
       >
-        <Stack.Screen
-          name="login"
-          options={{
-            headerShown: false,
+        <StatusBar style={esOscuro ? 'light' : 'dark'} />
+        <BannerDesconexion />
+
+        <Stack
+          initialRouteName={usuario ? '(tabs)' : 'login'}
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: esOscuro ? Colores.oscuro.tarjeta : Colores.primario,
+            },
+            headerTintColor: '#FFFFFF',
+            headerTitleStyle: {
+              fontWeight: '700',
+              fontSize: 18,
+            },
+            contentStyle: {
+              backgroundColor: colores.fondo,
+            },
           }}
-        />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="espacio/[id]"
-          options={{
-            title: 'Detalle de Cancha',
-            headerBackTitle: 'Volver',
-          }}
-        />
-        <Stack.Screen
-          name="escaner"
-          options={{
-            title: 'Control de Acceso QR',
-            headerBackTitle: 'Atrás',
-          }}
-        />
-        <Stack.Screen name="+not-found" options={{ title: 'No encontrado' }} />
-      </Stack>
+        >
+          <Stack.Screen
+            name="login"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="espacio/[id]"
+            options={{
+              title: 'Detalle de Cancha',
+              headerBackTitle: 'Volver',
+            }}
+          />
+          <Stack.Screen
+            name="escaner"
+            options={{
+              title: 'Control de Acceso QR',
+              headerBackTitle: 'Atrás',
+            }}
+          />
+          <Stack.Screen name="+not-found" options={{ title: 'No encontrado' }} />
+        </Stack>
+      </View>
     </View>
   );
 }
 
+const styles = StyleSheet.create({
+  contenedorExterior: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marcoResponsive: {
+    flex: 1,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 500 : undefined,
+    height: '100%',
+    overflow: 'hidden',
+    borderLeftWidth: Platform.OS === 'web' ? 1 : 0,
+    borderRightWidth: Platform.OS === 'web' ? 1 : 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: Platform.OS === 'web' ? 0.12 : 0,
+    shadowRadius: 20,
+    elevation: Platform.OS === 'web' ? 8 : 0,
+  },
+});
+
 export default function RootLayout() {
   useEffect(() => {
-    // Inicializar base de datos de manera asíncrona y segura
     obtenerBD().catch(err => {
       console.warn('[SQLite] Inicialización:', err);
     });
