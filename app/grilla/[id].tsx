@@ -40,19 +40,13 @@ export default function PantallaGrilla() {
   const [cargandoTurnos, setCargandoTurnos] = useState<boolean>(true);
   const [errorMensaje, setErrorMensaje] = useState<string | null>(null);
 
-  // Modal de reserva (Segundo toque del flujo)
+  // Modal para confirmar reserva en 2 toques
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null);
   const [mostrarModal, setMostrarModal] = useState<boolean>(false);
   const [cantidadPersonas, setCantidadPersonas] = useState<number>(2);
-  const [conLuz, setConLuz] = useState<boolean>(false);
   const [deporteElegidoId, setDeporteElegidoId] = useState<string>('');
   const [reservando, setReservando] = useState<boolean>(false);
 
-  const CANON_LUZ = 2500;
-  const precioBase = espacio?.precioPorHora || 0;
-  const precioTotal = precioBase + (conLuz ? CANON_LUZ : 0);
-
-  // Cargar información del espacio
   useEffect(() => {
     if (!id) return;
     const cargarInfo = async () => {
@@ -77,7 +71,6 @@ export default function PantallaGrilla() {
     cargarInfo();
   }, [id]);
 
-  // Cargar turnos del día seleccionado
   const cargarTurnos = useCallback(async () => {
     if (!id || !fechaSeleccionada) return;
     setCargandoTurnos(true);
@@ -101,14 +94,15 @@ export default function PantallaGrilla() {
   };
 
   const abrirModalReserva = (turno: Turno) => {
+    // Si no está registrado, se le pide cuenta recién al querer reservar
     if (!usuario) {
       Alert.alert(
-        'Iniciar Sesión Requerido',
-        'Podés consultar la disponibilidad libremente, pero para confirmar un turno debés ingresar con tu cuenta o registrarte.',
+        'Iniciar Sesión',
+        'Podés consultar la disponibilidad sin cuenta, pero para reservar un turno tenés que iniciar sesión o registrarte.',
         [
           { text: 'Seguir mirando', style: 'cancel' },
           {
-            text: 'Iniciar Sesión / Registrarme',
+            text: 'Ingresar / Registrarme',
             onPress: () => router.push('/login'),
           },
         ]
@@ -117,17 +111,13 @@ export default function PantallaGrilla() {
     }
 
     if (usuario.rol === 'encargado' || usuario.rol === 'administrador') {
-      const rolTexto = usuario.rol === 'administrador' ? 'Director de Deportes' : 'Encargado del Predio';
       Alert.alert(
-        'Modo Consulta — Personal Municipal',
-        `Como ${rolTexto}, podés supervisar las canchas y consultar la disponibilidad de los turnos, pero la reserva de alquileres está reservada exclusivamente para los jugadores y vecinos.`
+        'Modo Consulta',
+        'El personal municipal puede consultar la disponibilidad pero la reserva de turnos es para los jugadores.'
       );
       return;
     }
 
-    const horaInicioNum = parseInt(turno.inicio.split(':')[0], 10);
-    const sugiereLuz = horaInicioNum >= 19 && (espacio?.iluminacion ?? false);
-    setConLuz(sugiereLuz);
     setTurnoSeleccionado(turno);
     setCantidadPersonas(Math.min(2, espacio?.capacidad || 10));
     setMostrarModal(true);
@@ -137,7 +127,7 @@ export default function PantallaGrilla() {
     if (!espacio || !turnoSeleccionado || !usuario) return;
 
     if (usuario.rol !== 'jugador') {
-      Alert.alert('Acceso no permitido', 'Solo los usuarios con rol de jugador pueden realizar reservas de canchas.');
+      Alert.alert('Acceso no permitido', 'Solo los jugadores pueden realizar reservas de canchas.');
       return;
     }
 
@@ -150,9 +140,6 @@ export default function PantallaGrilla() {
       cantidadPersonas,
       fecha: fechaSeleccionada,
       inicio: turnoSeleccionado.inicio,
-      conLuz,
-      montoTotal: precioTotal,
-      estadoPago: 'pendiente',
       nombreUsuario: usuario.nombre,
       telefonoUsuario: usuario.telefono,
     });
@@ -168,15 +155,15 @@ export default function PantallaGrilla() {
     const reservaCreada = resultado.datos;
 
     Alert.alert(
-      '¡Reserva Confirmada! 🎾',
-      `Tu turno para ${espacio.nombre} a las ${turnoSeleccionado.inicio} hs fue confirmado exitosamente. Se ha generado tu código QR de acceso para la puerta.`,
+      '¡Turno Reservado!',
+      `Tu turno para ${espacio.nombre} a las ${turnoSeleccionado.inicio} hs fue confirmado. Se guardó tu código QR de acceso.`,
       [
         {
-          text: 'Ver mi QR de ingreso',
+          text: 'Ver mi reserva y QR',
           onPress: () => router.replace(`/reserva/${reservaCreada.id}` as any),
         },
         {
-          text: 'Seguir explorando',
+          text: 'Aceptar',
           style: 'cancel',
           onPress: () => cargarTurnos(),
         },
@@ -201,7 +188,7 @@ export default function PantallaGrilla() {
 
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      {/* Resumen del espacio */}
+      {/* Encabezado del espacio */}
       <View style={[styles.encabezadoEspacio, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
         <View style={styles.encabezadoTexto}>
           <Text style={[styles.nombreEspacio, { color: colores.texto }]}>{espacio.nombre}</Text>
@@ -211,33 +198,13 @@ export default function PantallaGrilla() {
         </View>
         <View style={styles.precioBadge}>
           <Text style={styles.precioMonto}>${espacio.precioPorHora.toLocaleString('es-AR')}</Text>
-          <Text style={styles.precioTexto}>/ hora</Text>
+          <Text style={styles.precioTexto}>por hora</Text>
         </View>
       </View>
 
-      {/* Banner informativo de modo consulta para personal municipal */}
-      {usuario && (usuario.rol === 'encargado' || usuario.rol === 'administrador') && (
-        <View
-          style={[
-            styles.bannerPersonal,
-            { backgroundColor: colores.tarjeta, borderColor: '#D97706' },
-          ]}
-        >
-          <Icono nombre="eye-outline" size={22} color="#D97706" />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[styles.bannerPersonalTitulo, { color: colores.texto }]}>
-              Modo Supervisión ({usuario.rol === 'administrador' ? 'Dirección de Deportes' : 'Encargado de Predio'})
-            </Text>
-            <Text style={[styles.bannerPersonalDesc, { color: colores.textoSecundario }]}>
-              Tenés acceso a la consulta y supervisión de turnos de la cancha. La reserva de alquileres está reservada exclusivamente para los jugadores y vecinos.
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Selector de 7 días */}
+      {/* Selector de los próximos 7 días */}
       <View style={styles.seccionDias}>
-        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Seleccioná una fecha:</Text>
+        <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Seleccionar día:</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -288,14 +255,14 @@ export default function PantallaGrilla() {
         </ScrollView>
       </View>
 
-      {/* Grilla horaria 8:00 a 24:00 */}
+      {/* Grilla de turnos de 8:00 a 24:00 */}
       <View style={styles.seccionTurnos}>
         <View style={styles.cabeceraTurnos}>
           <Text style={[styles.diaSeleccionadoTitulo, { color: colores.texto }]}>
             Turnos del {diaActualInfo?.etiqueta} ({diaActualInfo?.fecha})
           </Text>
           <Text style={[styles.instruccionToque, { color: colores.textoMuted }]}>
-            Tocá un horario libre para reservar
+            Tocá un turno libre para reservar
           </Text>
         </View>
 
@@ -303,7 +270,7 @@ export default function PantallaGrilla() {
           <View style={styles.cargandoTurnosBox}>
             <ActivityIndicator size="small" color={Colores.primarioClaro} />
             <Text style={[styles.cargandoTurnosTexto, { color: colores.textoMuted }]}>
-              Calculando disponibilidad de la cancha...
+              Cargando grilla de turnos...
             </Text>
           </View>
         ) : (
@@ -315,7 +282,7 @@ export default function PantallaGrilla() {
         )}
       </View>
 
-      {/* Modal Bottom Sheet: Segundo toque para confirmar la reserva */}
+      {/* Modal: Segundo toque para confirmar la reserva */}
       <Modal
         visible={mostrarModal}
         transparent
@@ -328,7 +295,7 @@ export default function PantallaGrilla() {
 
             <View style={styles.modalCabecera}>
               <View>
-                <Text style={[styles.modalTitulo, { color: colores.texto }]}>Confirmar Reserva</Text>
+                <Text style={[styles.modalTitulo, { color: colores.texto }]}>Reservar Turno</Text>
                 <Text style={[styles.modalSubtitulo, { color: colores.textoSecundario }]}>
                   {espacio.nombre}
                 </Text>
@@ -343,11 +310,11 @@ export default function PantallaGrilla() {
 
             {turnoSeleccionado && (
               <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                {/* Resumen fecha y horario */}
+                {/* Resumen del turno */}
                 <View style={[styles.tarjetaResumenModal, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
                   <View style={styles.modalFilaDato}>
                     <Icono nombre="calendar-outline" size={18} color={Colores.primarioClaro} />
-                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Fecha:</Text>
+                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Día:</Text>
                     <Text style={[styles.modalDatoValor, { color: colores.texto }]}>
                       {fechaSeleccionada} ({diaActualInfo?.diaSemana})
                     </Text>
@@ -357,82 +324,67 @@ export default function PantallaGrilla() {
                     <Icono nombre="time-outline" size={18} color={Colores.primarioClaro} />
                     <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Horario:</Text>
                     <Text style={[styles.modalDatoValor, { color: colores.texto }]}>
-                      {turnoSeleccionado.inicio} a {turnoSeleccionado.fin} hs (1 hora)
+                      {turnoSeleccionado.inicio} a {turnoSeleccionado.fin} hs
                     </Text>
                   </View>
 
                   <View style={styles.modalFilaDato}>
                     <Icono nombre="pricetag-outline" size={18} color={Colores.primarioClaro} />
-                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Tarifa base:</Text>
+                    <Text style={[styles.modalDatoEtiqueta, { color: colores.textoSecundario }]}>Precio:</Text>
                     <Text style={[styles.modalDatoValor, { color: Colores.primarioClaro, fontWeight: '800' }]}>
-                      ${espacio.precioPorHora.toLocaleString('es-AR')}
+                      ${espacio.precioPorHora.toLocaleString('es-AR')} (se paga en el lugar)
                     </Text>
                   </View>
                 </View>
 
-                {/* Selector de Iluminación Artificial (Con / Sin Luz) */}
-                <View style={styles.campoSelector}>
-                  <Text style={[styles.campoLabel, { color: colores.texto }]}>
-                    Iluminación de la Cancha:
-                  </Text>
-                  {espacio.iluminacion ? (
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <TouchableOpacity
-                        style={[
-                          styles.tarjetaOpcionLuz,
-                          {
-                            backgroundColor: !conLuz ? Colores.primarioClaro + '15' : colores.fondo,
-                            borderColor: !conLuz ? Colores.primarioClaro : colores.borde,
-                            borderWidth: !conLuz ? 2 : 1,
-                          },
-                        ]}
-                        onPress={() => setConLuz(false)}
-                      >
-                        <Icono nombre="sunny-outline" size={20} color={!conLuz ? Colores.primarioClaro : colores.textoSecundario} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.tituloOpcionLuz, { color: colores.texto }]}>Sin Luz</Text>
-                          <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Tarifa base</Text>
-                        </View>
-                        <Text style={[styles.precioOpcionLuz, { color: colores.texto }]}>+$0</Text>
-                      </TouchableOpacity>
+                {/* Selector de Deporte */}
+                {deportes.length > 0 && (
+                  <View style={styles.campoSelector}>
+                    <Text style={[styles.campoLabel, { color: colores.texto }]}>Deporte:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {deportes.map(d => {
+                        const esElegido = d.id === deporteElegidoId;
+                        return (
+                          <TouchableOpacity
+                            key={d.id}
+                            style={[
+                              styles.chipDeporte,
+                              {
+                                backgroundColor: esElegido ? Colores.primarioClaro : colores.fondo,
+                                borderColor: esElegido ? Colores.primarioClaro : colores.borde,
+                              },
+                            ]}
+                            onPress={() => setDeporteElegidoId(d.id)}
+                          >
+                            <Icono
+                              nombre={d.icono}
+                              size={15}
+                              color={esElegido ? '#FFFFFF' : d.color}
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text
+                              style={[
+                                styles.chipDeporteTexto,
+                                { color: esElegido ? '#FFFFFF' : colores.texto },
+                              ]}
+                            >
+                              {d.nombre}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
 
-                      <TouchableOpacity
-                        style={[
-                          styles.tarjetaOpcionLuz,
-                          {
-                            backgroundColor: conLuz ? '#F59E0B18' : colores.fondo,
-                            borderColor: conLuz ? '#F59E0B' : colores.borde,
-                            borderWidth: conLuz ? 2 : 1,
-                          },
-                        ]}
-                        onPress={() => setConLuz(true)}
-                      >
-                        <Icono nombre="bulb" size={20} color={conLuz ? '#F59E0B' : colores.textoSecundario} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.tituloOpcionLuz, { color: colores.texto }]}>Con Luz</Text>
-                          <Text style={{ fontSize: 11, color: colores.textoSecundario }}>Torres nocturnas</Text>
-                        </View>
-                        <Text style={[styles.precioOpcionLuz, { color: '#D97706', fontWeight: '800' }]}>+$2.500</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={[styles.avisoSinLuz, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
-                      <Icono nombre="sunny-outline" size={16} color={colores.textoMuted} />
-                      <Text style={{ color: colores.textoMuted, fontSize: 12 }}>
-                        Este espacio funciona exclusivamente con luz solar (sin reflectores).
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Selector de cantidad de jugadores */}
+                {/* Cuántos van a ser */}
                 <View style={styles.campoSelector}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={[styles.campoLabel, { color: colores.texto }]}>
-                      Cantidad de deportistas (Máx. {espacio.capacidad}):
+                      ¿Cuántos van a ser? (Máx. {espacio.capacidad}):
                     </Text>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colores.primarioClaro }}>
-                      {cantidadPersonas} {cantidadPersonas === 1 ? 'jugador' : 'jugadores'}
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: Colores.primarioClaro }}>
+                      {cantidadPersonas} personas
                     </Text>
                   </View>
 
@@ -446,7 +398,7 @@ export default function PantallaGrilla() {
                     </TouchableOpacity>
 
                     <Text style={[styles.contadorValor, { color: colores.texto }]}>
-                      {cantidadPersonas} {cantidadPersonas === 1 ? 'persona' : 'personas'}
+                      {cantidadPersonas}
                     </Text>
 
                     <TouchableOpacity
@@ -457,78 +409,17 @@ export default function PantallaGrilla() {
                       <Icono nombre="add" size={20} color={colores.texto} />
                     </TouchableOpacity>
                   </View>
-
-                  {/* Atajos rápidos de jugadores según capacidad */}
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                    {[2, 4, Math.floor(espacio.capacidad / 2), espacio.capacidad]
-                      .filter((val, idx, arr) => val <= espacio.capacidad && val > 0 && arr.indexOf(val) === idx)
-                      .map(cant => (
-                        <TouchableOpacity
-                          key={cant}
-                          style={[
-                            styles.chipPresetJugadores,
-                            {
-                              backgroundColor: cantidadPersonas === cant ? Colores.primarioClaro : colores.fondo,
-                              borderColor: colores.borde,
-                            },
-                          ]}
-                          onPress={() => setCantidadPersonas(cant)}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: '700',
-                              color: cantidadPersonas === cant ? '#FFFFFF' : colores.texto,
-                            }}
-                          >
-                            {cant} jug.
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                  </View>
                 </View>
 
-                {/* Desglose de Pago transparente */}
-                <View style={[styles.desgloseCaja, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
-                  <View style={styles.desgloseFila}>
-                    <Text style={{ color: colores.textoSecundario, fontSize: 13 }}>Alquiler cancha:</Text>
-                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '600' }}>
-                      ${precioBase.toLocaleString('es-AR')}
-                    </Text>
-                  </View>
-                  {conLuz && (
-                    <View style={styles.desgloseFila}>
-                      <Text style={{ color: colores.textoSecundario, fontSize: 13 }}>💡 Iluminación nocturna:</Text>
-                      <Text style={{ color: '#D97706', fontSize: 13, fontWeight: '700' }}>
-                        +${CANON_LUZ.toLocaleString('es-AR')}
-                      </Text>
-                    </View>
-                  )}
-                  <View
-                    style={[
-                      styles.desgloseFila,
-                      { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colores.borde, paddingTop: 6, marginTop: 4 },
-                    ]}
-                  >
-                    <Text style={{ color: colores.texto, fontSize: 15, fontWeight: '800' }}>Total a abonar:</Text>
-                    <Text style={{ color: Colores.primarioClaro, fontSize: 18, fontWeight: '900' }}>
-                      ${precioTotal.toLocaleString('es-AR')}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 11, color: colores.textoMuted, marginTop: 4 }}>
-                    * Se abona en puerta al encargado del predio.
-                  </Text>
-                </View>
-
-                {/* Avisos de política de cancelación y normas de la Dirección de Deportes */}
+                {/* Aviso de cancelación */}
                 <View style={styles.avisoReglas}>
-                  <Icono nombre="information-circle-outline" size={20} color={Colores.secundario} />
+                  <Icono nombre="information-circle-outline" size={18} color={Colores.secundario} />
                   <Text style={[styles.avisoReglasTexto, { color: colores.textoSecundario }]}>
-                    Podés cancelar sin penalización hasta 4 horas antes. Cancelaciones con menos de 4 hs o ausencias quedarán registradas en tu legajo deportivo.
+                    Se puede cancelar sin aviso hasta 4 horas antes del turno.
                   </Text>
                 </View>
 
-                {/* Botón de Confirmación Definitiva */}
+                {/* Botón de Confirmación */}
                 <TouchableOpacity
                   style={[styles.botonConfirmarReserva, { opacity: reservando ? 0.7 : 1 }]}
                   onPress={confirmarReserva}
@@ -539,7 +430,7 @@ export default function PantallaGrilla() {
                   ) : (
                     <>
                       <Icono nombre="checkmark-circle-outline" size={22} color="#FFFFFF" />
-                      <Text style={styles.botonConfirmarTexto}>Confirmar Reserva Ahora</Text>
+                      <Text style={styles.botonConfirmarTexto}>Confirmar Reserva</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -549,7 +440,7 @@ export default function PantallaGrilla() {
                   onPress={() => setMostrarModal(false)}
                 >
                   <Text style={[styles.botonCancelarModalTexto, { color: colores.textoMuted }]}>
-                    Volver a los horarios
+                    Cancelar
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -572,25 +463,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-  },
-  bannerPersonal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 4,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-  },
-  bannerPersonalTitulo: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  bannerPersonalDesc: {
-    fontSize: 11,
-    lineHeight: 15,
   },
   encabezadoTexto: {
     flex: 1,
@@ -626,8 +498,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     paddingHorizontal: 16,
     marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   listaDias: {
     paddingHorizontal: 16,
@@ -737,7 +607,7 @@ const styles = StyleSheet.create({
   },
   modalDatoEtiqueta: {
     fontSize: 13,
-    width: 105,
+    width: 70,
     fontWeight: '500',
   },
   modalDatoValor: {
@@ -753,37 +623,50 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
   },
+  chipDeporte: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  chipDeporteTexto: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   contadorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
+    marginTop: 4,
   },
   botonContador: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   contadorValor: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
   },
   avisoReglas: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(232, 170, 66, 0.1)',
+    backgroundColor: 'rgba(232, 170, 66, 0.12)',
     borderRadius: 10,
     padding: 12,
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   avisoReglasTexto: {
     flex: 1,
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 16,
   },
   botonConfirmarReserva: {
     backgroundColor: Colores.primarioClaro,
@@ -793,65 +676,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: Colores.primarioClaro,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 3,
   },
   botonConfirmarTexto: {
     color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '700',
+    fontSize: 15,
   },
   botonCancelarModal: {
-    marginTop: 12,
+    paddingVertical: 12,
     alignItems: 'center',
-    paddingVertical: 8,
+    marginTop: 4,
   },
   botonCancelarModalTexto: {
     fontSize: 13,
-    fontWeight: '600',
-  },
-  tarjetaOpcionLuz: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: 10,
-  },
-  tituloOpcionLuz: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  precioOpcionLuz: {
-    fontSize: 12,
-  },
-  avisoSinLuz: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  chipPresetJugadores: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  desgloseCaja: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 16,
-    gap: 6,
-  },
-  desgloseFila: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
 });

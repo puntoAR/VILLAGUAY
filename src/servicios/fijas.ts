@@ -43,5 +43,17 @@ export const ReservasFijasServicio = {
     } catch {
       return crearError('ERROR_CREAR_FIJA', 'No se pudo guardar la reserva fija.');
     }
+  },
+
+  async eliminarFija(id: string): Promise<RespuestaExito<boolean> | RespuestaError> {
+    try {
+      const db = await obtenerBD();
+      await db.runAsync('DELETE FROM reservas_fijas WHERE id = ?', [id]);
+      const idx = RESERVAS_FIJAS_MOCK.findIndex(f => f.id === id);
+      if (idx !== -1) RESERVAS_FIJAS_MOCK.splice(idx, 1);
+      return crearExito(true);
+    } catch {
+      return crearError('ERROR_ELIMINAR_FIJA', 'No se pudo eliminar la reserva fija.');
+    }
   }
 };

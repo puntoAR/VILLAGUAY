@@ -84,7 +84,7 @@ export default function PantallaPerfil() {
         </View>
       )}
 
-      {/* Métricas de Comportamiento (PRD Nahuel: cancelaciones tardías y ausencias) */}
+      {/* Registro de cancelaciones tardías y ausencias */}
       {usuario && (
         <View style={styles.seccion}>
           <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Historial de Cumplimiento</Text>
@@ -108,7 +108,7 @@ export default function PantallaPerfil() {
                 {usuario.ausencias ?? 0}
               </Text>
               <Text style={[styles.metricaEtiqueta, { color: colores.textoSecundario }]}>
-                Ausencias (No-Show)
+                Ausencias
               </Text>
               <Text style={[styles.metricaAviso, { color: colores.textoMuted }]}>
                 (Marcadas en puerta)
@@ -118,13 +118,13 @@ export default function PantallaPerfil() {
         </View>
       )}
 
-      {/* Selector de Rol para Defensa Oral y Pruebas Cátedra */}
+      {/* Cambiar de cuenta */}
       <View style={styles.seccion}>
         <Text style={[styles.seccionTitulo, { color: colores.texto }]}>
-          Selector Rápido de Cuenta (Defensa Oral)
+          Cambiar de Cuenta
         </Text>
         <Text style={[styles.seccionSubtitulo, { color: colores.textoSecundario }]}>
-          Permite simular la experiencia completa de los 5 perfiles oficiales:
+          Seleccioná un perfil para ingresar rápidamente:
         </Text>
 
         {USUARIOS_MOCK.map(u => {

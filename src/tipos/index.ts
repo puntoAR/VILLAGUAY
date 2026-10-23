@@ -1,6 +1,3 @@
-// src/tipos/index.ts
-// Tipos del Sistema de Reservas Deportivas - Dirección de Deportes de Villaguay
-
 export interface Coordenadas {
   latitud: number;
   longitud: number;
@@ -35,9 +32,9 @@ export type EstadoTurno = 'libre' | 'reservado' | 'fijo' | 'mantenimiento';
 export interface Turno {
   id: string;
   espacioId: string;
-  fecha: string; // "AAAA-MM-DD"
-  inicio: string; // "HH:MM"
-  fin: string; // "HH:MM"
+  fecha: string;
+  inicio: string;
+  fin: string;
   estado: EstadoTurno;
   reservaId: string | null;
   motivoBloqueo: string | null;
@@ -45,7 +42,6 @@ export interface Turno {
 }
 
 export type EstadoReserva = 'confirmada' | 'cancelada' | 'cumplida' | 'ausente';
-export type EstadoPago = 'pagado' | 'pendiente';
 
 export interface Reserva {
   id: string;
@@ -56,36 +52,28 @@ export interface Reserva {
   codigoQr: string;
   estado: EstadoReserva;
   ingresoEn: string | null;
-  creadaEn: string; // ISO 8601
-  cancelableHasta: string; // ISO 8601
+  creadaEn: string;
+  cancelableHasta: string;
   conLuz?: boolean;
   montoTotal?: number;
-  estadoPago?: EstadoPago;
   nombreUsuario?: string;
   telefonoUsuario?: string;
   nombreEspacio?: string;
 }
 
-export interface MetricasMacro {
-  recaudacionTotal: number;
-  recaudacionCobrada: number;
-  recaudacionPendiente: number;
-  totalReservas: number;
-  tasaOcupacion: number;
-  reservasPorDeporte: { deporte: string; cantidad: number; color: string }[];
-  rankingEspacios: { nombre: string; reservas: number }[];
-  totalCanceladas: number;
-  totalAusentes: number;
+export interface RespuestaAuth {
+  usuario: Usuario;
+  token: string;
 }
 
 export interface ReservaFija {
   id: string;
   espacioId: string;
   titular: string;
-  dia: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = domingo
+  dia: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   inicio: string;
   fin: string;
-  desde: string; // "AAAA-MM-DD"
+  desde: string;
   hasta: string | null;
   activa: boolean;
 }
@@ -115,11 +103,6 @@ export interface DatosRegistro {
   telefono: string;
   password?: string;
   rol?: Rol;
-}
-
-export interface RespuestaAuth {
-  usuario: Usuario;
-  token: string;
 }
 
 export interface BloqueoMantenimiento {

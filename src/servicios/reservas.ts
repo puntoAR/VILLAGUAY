@@ -1,30 +1,28 @@
 import { obtenerBD } from '../basedatos/sqlite';
-import { Reserva, RespuestaExito, RespuestaError, MetricasMacro, EstadoPago } from '../tipos';
-import { crearExito, crearError, esError } from './api';
+import { Reserva, RespuestaExito, RespuestaError } from '../tipos';
+import { crearExito, crearError } from './api';
 import { Haptica } from './haptica';
 import { NotificacionesServicio } from './notificaciones';
 import { RESERVAS_MOCK } from '../mocks/reservas';
 import { USUARIOS_MOCK } from '../mocks/usuarios';
 
 export const ReservasServicio = {
+  // Crear una nueva reserva para un turno libre
   async crearReserva(params: {
     espacioId: string;
-    nombreEspacio: string;
+    nombreEspacio?: string;
     turnoId: string;
     usuarioId: string;
     cantidadPersonas: number;
     fecha: string;
     inicio: string;
-    conLuz?: boolean;
-    montoTotal?: number;
-    estadoPago?: 'pagado' | 'pendiente';
     nombreUsuario?: string;
     telefonoUsuario?: string;
   }): Promise<RespuestaExito<Reserva> | RespuestaError> {
     try {
       const db = await obtenerBD();
 
-      // Validar que solo los jugadores puedan reservar
+      // Solo los usuarios con rol jugador pueden realizar reservas
       const usuarioObj = await db.getFirstAsync<any>(
         'SELECT rol FROM usuarios WHERE id = ?',
         [params.usuarioId]
@@ -35,6 +33,8 @@ export const ReservasServicio = {
           'El personal municipal (encargados y directores) no puede realizar reservas particulares de canchas.'
         );
       }
+
+      // Máximo de 3 reservas activas por persona
       const activas = await db.getAllAsync<any>(
         'SELECT * FROM reservas WHERE usuarioId = ? AND estado = "confirmada"',
         [params.usuarioId]
@@ -47,6 +47,7 @@ export const ReservasServicio = {
         );
       }
 
+      // Comprobar si el turno ya fue reservado
       const turnoTomado = await db.getFirstAsync<any>(
         'SELECT * FROM reservas WHERE turnoId = ? AND estado = "confirmada"',
         [params.turnoId]
@@ -63,6 +64,7 @@ export const ReservasServicio = {
       const [anio, mes, dia] = params.fecha.split('-').map(Number);
       const [hora, min] = params.inicio.split(':').map(Number);
       const fechaTurno = new Date(anio, mes - 1, dia, hora, min);
+      // Cancelable sin penalización hasta 4 horas antes
       const cancelableHasta = new Date(fechaTurno.getTime() - 4 * 60 * 60 * 1000).toISOString();
 
       const nuevaReserva: Reserva = {
@@ -76,16 +78,13 @@ export const ReservasServicio = {
         ingresoEn: null,
         creadaEn: ahoraIso,
         cancelableHasta,
-        conLuz: Boolean(params.conLuz),
-        montoTotal: params.montoTotal || 12000,
-        estadoPago: params.estadoPago || 'pendiente',
         nombreUsuario: params.nombreUsuario,
         telefonoUsuario: params.telefonoUsuario,
         nombreEspacio: params.nombreEspacio,
       };
 
       await db.runAsync(
-        'INSERT INTO reservas (id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, ingresoEn, creadaEn, cancelableHasta, conLuz, montoTotal, estadoPago, nombreUsuario, telefonoUsuario, nombreEspacio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO reservas (id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, ingresoEn, creadaEn, cancelableHasta, nombreUsuario, telefonoUsuario, nombreEspacio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           nuevaReserva.id,
           nuevaReserva.turnoId,
@@ -97,9 +96,6 @@ export const ReservasServicio = {
           nuevaReserva.ingresoEn || null,
           nuevaReserva.creadaEn,
           nuevaReserva.cancelableHasta,
-          nuevaReserva.conLuz ? 1 : 0,
-          nuevaReserva.montoTotal || 0,
-          nuevaReserva.estadoPago || 'pendiente',
           nuevaReserva.nombreUsuario || null,
           nuevaReserva.telefonoUsuario || null,
           nuevaReserva.nombreEspacio || null,
@@ -111,7 +107,7 @@ export const ReservasServicio = {
       await Haptica.confirmacion();
       await NotificacionesServicio.programarRecordatorioTurno(
         nuevaReserva.id,
-        params.nombreEspacio,
+        params.nombreEspacio || 'Cancha',
         params.fecha,
         params.inicio
       );
@@ -122,7 +118,8 @@ export const ReservasServicio = {
     }
   },
 
-  async obtenerMisReservas(usuarioId: string): Promise<RespuestaExito< { proximas: Reserva[]; pasadas: Reserva[] }> | RespuestaError> {
+  // Obtener reservas del usuario separadas en próximas y pasadas
+  async obtenerMisReservas(usuarioId: string): Promise<RespuestaExito<{ proximas: Reserva[]; pasadas: Reserva[] }> | RespuestaError> {
     try {
       const db = await obtenerBD();
       const rows = await db.getAllAsync<any>(
@@ -141,9 +138,6 @@ export const ReservasServicio = {
         ingresoEn: r.ingresoEn || null,
         creadaEn: r.creadaEn,
         cancelableHasta: r.cancelableHasta,
-        conLuz: Boolean(r.conLuz),
-        montoTotal: r.montoTotal || 12000,
-        estadoPago: (r.estadoPago as any) || 'pendiente',
         nombreUsuario: r.nombreUsuario || undefined,
         telefonoUsuario: r.telefonoUsuario || undefined,
         nombreEspacio: r.nombreEspacio || undefined,
@@ -162,6 +156,7 @@ export const ReservasServicio = {
     }
   },
 
+  // Obtener el detalle de una reserva por ID
   async obtenerReservaPorId(id: string): Promise<RespuestaExito<Reserva> | RespuestaError> {
     try {
       const db = await obtenerBD();
@@ -182,9 +177,6 @@ export const ReservasServicio = {
         ingresoEn: r.ingresoEn || null,
         creadaEn: r.creadaEn,
         cancelableHasta: r.cancelableHasta,
-        conLuz: Boolean(r.conLuz),
-        montoTotal: r.montoTotal || 12000,
-        estadoPago: (r.estadoPago as any) || 'pendiente',
         nombreUsuario: r.nombreUsuario || undefined,
         telefonoUsuario: r.telefonoUsuario || undefined,
         nombreEspacio: r.nombreEspacio || undefined,
@@ -196,6 +188,7 @@ export const ReservasServicio = {
     }
   },
 
+  // Cancelar una reserva (registra cancelación tardía si es a menos de 4 horas)
   async cancelarReserva(reservaId: string, usuarioId: string): Promise<RespuestaExito<{ cancelacionTardia: boolean }> | RespuestaError> {
     try {
       const db = await obtenerBD();
@@ -225,6 +218,7 @@ export const ReservasServicio = {
     }
   },
 
+  // Validar código QR escaneado en puerta por el encargado
   async validarIngresoQr(codigoQr: string, espacioIdActual?: string): Promise<RespuestaExito<{ reserva: Reserva; mensaje: string }> | RespuestaError> {
     try {
       const db = await obtenerBD();
@@ -250,26 +244,26 @@ export const ReservasServicio = {
         return crearError('TURNO_AUSENTE', 'Esta reserva fue marcada como no presentado (ausente).');
       }
 
+      // Validar si corresponde al día de hoy
+      const partesTurno = r.turnoId.split('-');
+      if (partesTurno.length >= 3) {
+        const fechaTurnoStr = partesTurno[2]; // AAAAMMDD
+        const ahora = new Date();
+        const hoyStr = `${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}`;
+        if (fechaTurnoStr !== hoyStr) {
+          await Haptica.errorIngreso();
+          return crearError('FECHA_INCORRECTA', 'El código corresponde a una reserva de otra fecha, no a la jornada de hoy.');
+        }
+      }
+
+      // Validar si corresponde a la cancha actual si se especificó
       if (espacioIdActual && r.espacioId !== espacioIdActual) {
         await Haptica.errorIngreso();
-        return crearError('CANCHA_DISTINTA', `El código pertenece a otro espacio deportivo (${r.espacioId}), no a esta cancha.`);
+        return crearError('CANCHA_INCORRECTA', `Este código pertenece al espacio #${r.espacioId}, no a esta cancha.`);
       }
 
       const ahoraIso = new Date().toISOString();
       await db.runAsync('UPDATE reservas SET estado = "cumplida", ingresoEn = ? WHERE id = ?', [ahoraIso, r.id]);
-
-      const resActualizada: Reserva = {
-        id: r.id,
-        turnoId: r.turnoId,
-        espacioId: r.espacioId,
-        usuarioId: r.usuarioId,
-        cantidadPersonas: r.cantidadPersonas,
-        codigoQr: r.codigoQr,
-        estado: 'cumplida',
-        ingresoEn: ahoraIso,
-        creadaEn: r.creadaEn,
-        cancelableHasta: r.cancelableHasta,
-      };
 
       const m = RESERVAS_MOCK.find(x => x.id === r.id);
       if (m) {
@@ -278,38 +272,46 @@ export const ReservasServicio = {
       }
 
       await Haptica.exitoIngreso();
+      const horaLlegada = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
       return crearExito({
-        reserva: resActualizada,
-        mensaje: `Ingreso validado con éxito para ${r.cantidadPersonas} personas.`
+        reserva: {
+          ...r,
+          estado: 'cumplida',
+          ingresoEn: ahoraIso,
+        },
+        mensaje: `Ingreso registrado a las ${horaLlegada} hs. Cantidad de jugadores: ${r.cantidadPersonas}.`
       });
     } catch {
-      await Haptica.errorIngreso();
-      return crearError('ERROR_VALIDACION', 'Ocurrió un error al procesar el código.');
+      return crearError('ERROR_VALIDAR_QR', 'Error al procesar el código de ingreso.');
     }
   },
 
+  // Marcar una reserva como no presentado (ausente) por el encargado
   async marcarAusente(reservaId: string): Promise<RespuestaExito<boolean> | RespuestaError> {
     try {
       const db = await obtenerBD();
       const r = await db.getFirstAsync<any>('SELECT * FROM reservas WHERE id = ?', [reservaId]);
-      if (!r) return crearError('NO_ENCONTRADA', 'Reserva no encontrada.');
+      if (!r) {
+        return crearError('RESERVA_NO_ENCONTRADA', 'La reserva no existe.');
+      }
 
       await db.runAsync('UPDATE reservas SET estado = "ausente" WHERE id = ?', [reservaId]);
       await db.runAsync('UPDATE usuarios SET ausencias = ausencias + 1 WHERE id = ?', [r.usuarioId]);
 
-      const u = USUARIOS_MOCK.find(x => x.id === r.usuarioId);
-      if (u) u.ausencias += 1;
-
       const m = RESERVAS_MOCK.find(x => x.id === reservaId);
       if (m) m.estado = 'ausente';
 
+      const u = USUARIOS_MOCK.find(x => x.id === r.usuarioId);
+      if (u) u.ausencias += 1;
+
       return crearExito(true);
     } catch {
-      return crearError('ERROR_AUSENTE', 'No se pudo marcar como ausente.');
+      return crearError('ERROR_MARCAR_AUSENTE', 'No se pudo marcar la inasistencia.');
     }
   },
 
-  // Obtener reservas activas y del predio para el encargado
+  // Obtener todas las reservas registradas
   async obtenerAlquileresPredio(): Promise<RespuestaExito<Reserva[]> | RespuestaError> {
     try {
       const db = await obtenerBD();
@@ -326,9 +328,6 @@ export const ReservasServicio = {
         ingresoEn: r.ingresoEn || null,
         creadaEn: r.creadaEn,
         cancelableHasta: r.cancelableHasta,
-        conLuz: Boolean(r.conLuz),
-        montoTotal: r.montoTotal || 12000,
-        estadoPago: (r.estadoPago as any) || 'pendiente',
         nombreUsuario: r.nombreUsuario || undefined,
         telefonoUsuario: r.telefonoUsuario || undefined,
         nombreEspacio: r.nombreEspacio || undefined,
@@ -346,79 +345,4 @@ export const ReservasServicio = {
       return crearExito(RESERVAS_MOCK);
     }
   },
-
-  // Registrar cobro en puerta por el encargado
-  async cambiarEstadoPago(reservaId: string, nuevoEstado: EstadoPago): Promise<RespuestaExito<boolean> | RespuestaError> {
-    try {
-      const db = await obtenerBD();
-      await db.runAsync('UPDATE reservas SET estadoPago = ? WHERE id = ?', [nuevoEstado, reservaId]);
-
-      const m = RESERVAS_MOCK.find(r => r.id === reservaId);
-      if (m) {
-        m.estadoPago = nuevoEstado;
-      }
-
-      await Haptica.confirmacion();
-      return crearExito(true);
-    } catch {
-      return crearError('ERROR_PAGO', 'No se pudo actualizar el estado de pago en el sistema.');
-    }
-  },
-
-  // Indicadores y métricas macro para la Dirección de Deportes
-  async obtenerMetricasMacro(): Promise<RespuestaExito<MetricasMacro> | RespuestaError> {
-    try {
-      const res = await this.obtenerAlquileresPredio();
-      const lista = esError(res) ? RESERVAS_MOCK : res.datos;
-
-      let recaudacionTotal = 0;
-      let recaudacionCobrada = 0;
-      let recaudacionPendiente = 0;
-      let canceladas = 0;
-      let ausentes = 0;
-
-      lista.forEach((r: Reserva) => {
-        if (r.estado !== 'cancelada') {
-          const monto = r.montoTotal || 12000;
-          recaudacionTotal += monto;
-          if (r.estadoPago === 'pagado') {
-            recaudacionCobrada += monto;
-          } else {
-            recaudacionPendiente += monto;
-          }
-        } else {
-          canceladas += 1;
-        }
-        if (r.estado === 'ausente') {
-          ausentes += 1;
-        }
-      });
-
-      const metricas: MetricasMacro = {
-        recaudacionTotal,
-        recaudacionCobrada,
-        recaudacionPendiente,
-        totalReservas: lista.length,
-        tasaOcupacion: 78,
-        reservasPorDeporte: [
-          { deporte: 'Fútbol (Sintético y 11)', cantidad: Math.max(12, lista.filter((r: Reserva) => r.espacioId.includes('01') || r.espacioId.includes('02') || r.espacioId.includes('03')).length * 4), color: '#16A34A' },
-          { deporte: 'Gimnasio Multiuso', cantidad: 9, color: '#D97706' },
-          { deporte: 'Pádel / Tenis Berduc', cantidad: 6, color: '#2563EB' },
-          { deporte: 'Básquetbol', cantidad: 4, color: '#9333EA' },
-        ],
-        rankingEspacios: [
-          { nombre: 'Cancha 1 — Fútbol 5 (Sintético)', reservas: 24 },
-          { nombre: 'Gimnasio Cerrado Multiuso (Parquet)', reservas: 19 },
-          { nombre: 'Cancha 2 — Fútbol 5 (Sintético)', reservas: 16 },
-          { nombre: 'Cancha Tenis 1 (Polvo de ladrillo)', reservas: 11 },
-        ],
-        totalCanceladas: canceladas,
-        totalAusentes: ausentes,
-      };
-
-      return crearExito(metricas);
-    } catch {
-      return crearError('ERROR_METRICAS', 'No se pudieron calcular las métricas macro.');
-    }
-  }
 };

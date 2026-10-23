@@ -374,16 +374,16 @@ export default function PantallaLogin() {
               </TouchableOpacity>
             )}
 
-            {/* Acceso Rápido para Tribunal Examinador (Evaluación Oral) */}
+            {/* Cuentas de prueba para ingresar */}
             <View style={[styles.seccionEvaluacion, { borderTopColor: colores.borde }]}>
               <View style={styles.cabeceraEvaluacion}>
-                <Icono nombre="school-outline" size={18} color={Colores.secundario} />
+                <Icono nombre="people-outline" size={18} color={Colores.secundario} />
                 <Text style={[styles.tituloEvaluacion, { color: colores.texto }]}>
-                  ACCESO RÁPIDO PARA DEFENSA DE CÁTEDRA:
+                  Cuentas de prueba para ingresar:
                 </Text>
               </View>
               <Text style={[styles.descEvaluacion, { color: colores.textoSecundario }]}>
-                Seleccioná uno de los 5 perfiles oficiales del PRD con 1 toque:
+                Seleccioná un perfil para iniciar sesión rápidamente:
               </Text>
 
               <View style={styles.grillaPerfiles}>

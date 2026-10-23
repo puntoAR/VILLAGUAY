@@ -16,7 +16,6 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
   const { colores } = useTema();
   const router = useRouter();
 
-  const fechaObj = new Date(reserva.creadaEn);
   const ahora = new Date().getTime();
   const limiteCancelacion = new Date(reserva.cancelableHasta).getTime();
   const esCancelableSinAviso = ahora < limiteCancelacion;
@@ -72,44 +71,18 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
         <View style={styles.datoItem}>
           <Icono nombre="people-outline" size={16} color={Colores.primarioClaro} />
           <Text style={[styles.datoTexto, { color: colores.texto }]}>
-            {reserva.cantidadPersonas} deportistas
-          </Text>
-        </View>
-      </View>
-
-      {/* Fila de Iluminación y Estado de Pago */}
-      <View style={[styles.datosFila, { alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }]}>
-        <View style={styles.datoItem}>
-          <Icono
-            nombre={reserva.conLuz ? 'bulb' : 'sunny-outline'}
-            size={16}
-            color={reserva.conLuz ? '#D97706' : Colores.primarioClaro}
-          />
-          <Text style={[styles.datoTexto, { color: reserva.conLuz ? '#D97706' : colores.texto, fontWeight: reserva.conLuz ? '700' : '500' }]}>
-            {reserva.conLuz ? '💡 Con Luz nocturna' : '☀️ Sin Luz'}
+            {reserva.cantidadPersonas} personas
           </Text>
         </View>
 
-        <View
-          style={[
-            styles.badgePago,
-            {
-              backgroundColor: reserva.estadoPago === 'pagado' ? '#DCFCE7' : '#FEF3C7',
-              borderColor: reserva.estadoPago === 'pagado' ? '#86EFAC' : '#FDE68A',
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.badgePagoTexto,
-              { color: reserva.estadoPago === 'pagado' ? '#166534' : '#92400E' },
-            ]}
-          >
-            {reserva.estadoPago === 'pagado'
-              ? `✅ Pagado: $${(reserva.montoTotal ?? espacio?.precioPorHora ?? 0).toLocaleString('es-AR')}`
-              : `⏳ Por abonar: $${(reserva.montoTotal ?? espacio?.precioPorHora ?? 0).toLocaleString('es-AR')}`}
-          </Text>
-        </View>
+        {espacio?.precioPorHora && (
+          <View style={styles.datoItem}>
+            <Icono nombre="pricetag-outline" size={16} color={Colores.primarioClaro} />
+            <Text style={[styles.datoTexto, { color: colores.texto }]}>
+              ${espacio.precioPorHora.toLocaleString('es-AR')}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={[styles.seccionQr, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
@@ -132,8 +105,8 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
         <View style={styles.footer}>
           <Text style={[styles.avisoCancelacion, { color: esCancelableSinAviso ? Colores.exito : Colores.advertencia }]}>
             {esCancelableSinAviso
-              ? '✓ Cancelable sin penalización'
-              : '⚠️ Cancelación tardía (quedará registrada)'}
+              ? '✓ Cancelable sin aviso'
+              : '⚠️ Menos de 4 hs (cancelación tardía)'}
           </Text>
 
           {onCancelar && (
@@ -141,7 +114,7 @@ export const TarjetaReserva: React.FC<Props> = ({ reserva, espacio, onCancelar }
               style={[styles.botonCancelar, { borderColor: Colores.peligro }]}
               onPress={() => onCancelar(reserva.id)}
             >
-              <Text style={[styles.botonCancelarTexto, { color: Colores.peligro }]}>Cancelar</Text>
+              <Text style={[styles.botonCancelarTexto, { color: Colores.peligro }]}>Cancelar turno</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -192,8 +165,9 @@ const styles = StyleSheet.create({
   },
   datosFila: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   datoItem: {
     flexDirection: 'row',
@@ -254,26 +228,15 @@ const styles = StyleSheet.create({
   avisoCancelacion: {
     fontSize: 11,
     fontWeight: '600',
-    flex: 1,
   },
   botonCancelar: {
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   botonCancelarTexto: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  badgePago: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  badgePagoTexto: {
-    fontSize: 11,
     fontWeight: '700',
   },
 });
