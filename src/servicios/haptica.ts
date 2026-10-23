@@ -12,6 +12,13 @@ export const Haptica = {
     } catch {}
   },
 
+  async seleccionSuave() {
+    if (Platform.OS === 'web') return;
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+  },
+
   async impactoSuave() {
     if (Platform.OS === 'web') return;
     try {
@@ -33,10 +40,22 @@ export const Haptica = {
     } catch {}
   },
 
+  async confirmacion() {
+    await this.exito();
+  },
+
+  async exitoIngreso() {
+    await this.exito();
+  },
+
   async error() {
     if (Platform.OS === 'web') return;
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch {}
-  }
+  },
+
+  async errorIngreso() {
+    await this.error();
+  },
 };

@@ -2,7 +2,7 @@
 // Pantalla de inicio de sesión
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexto/AuthContext';
 import { useTema } from '../contexto/ThemeContext';
@@ -17,6 +17,7 @@ export default function PantallaLogin() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [procesando, setProcesando] = useState(false);
 
   const manejarIngreso = async () => {
     if (!email.trim() || !password.trim()) {
@@ -24,26 +25,34 @@ export default function PantallaLogin() {
       return;
     }
 
-    const resultado = await iniciarSesion(email.trim(), password);
-    if (resultado.exito) {
-      Haptica.exito();
-      router.replace('/(tabs)');
-    } else {
-      Haptica.error();
-      Alert.alert('No se pudo ingresar', resultado.mensaje || 'Credenciales inválidas.');
+    try {
+      setProcesando(true);
+      const resultado = await iniciarSesion(email.trim(), password);
+      if (resultado.exito) {
+        await Haptica.exito();
+        router.replace('/(tabs)');
+      } else {
+        await Haptica.error();
+        Alert.alert('No se pudo ingresar', resultado.mensaje || 'Credenciales inválidas.');
+      }
+    } catch (e: any) {
+      await Haptica.error();
+      Alert.alert('Error', e?.message || 'Ocurrió un error al iniciar sesión.');
+    } finally {
+      setProcesando(false);
     }
   };
 
   const manejarBiometria = async () => {
-    Haptica.seleccion();
+    await Haptica.seleccion();
     const ok = await autenticarBiometria();
     if (ok) {
-      Haptica.exito();
-      await iniciarSesion('usuario@villaguay.gob.ar', 'usuario123');
+      await Haptica.exito();
+      await iniciarSesion('usuario@villaguay.gob.ar', 'password123');
       router.replace('/(tabs)');
     } else {
-      Haptica.error();
-      Alert.alert('Error biométrico', 'No se pudo verificar la huella o el rostro.');
+      await Haptica.error();
+      Alert.alert('Error biométrico', 'No se pudo verificar la identidad.');
     }
   };
 
@@ -74,6 +83,7 @@ export default function PantallaLogin() {
               placeholderTextColor={colores.textoMuted}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
         </View>
@@ -96,11 +106,16 @@ export default function PantallaLogin() {
         <Pressable
           style={({ pressed }) => [
             styles.botonIngreso,
-            { backgroundColor: Colores.primarioClaro, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: Colores.primarioClaro, opacity: pressed || procesando ? 0.8 : 1 },
           ]}
           onPress={manejarIngreso}
+          disabled={procesando}
         >
-          <Text style={styles.textoBotonIngreso}>Ingresar</Text>
+          {procesando ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.textoBotonIngreso}>Ingresar</Text>
+          )}
         </Pressable>
 
         {soportaBiometria && (
@@ -118,7 +133,7 @@ export default function PantallaLogin() {
           </Pressable>
         )}
 
-        {/* Accesos Rápidos de Prueba */}
+        {/* Accesos rápidos para probar fácilmente */}
         <View style={[styles.tarjetaPrueba, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
           <Text style={[styles.tituloPrueba, { color: colores.textoSecundario }]}>
             ACCESOS RÁPIDOS DE PRUEBA:
@@ -128,7 +143,7 @@ export default function PantallaLogin() {
               style={[styles.botonMiniPrueba, { backgroundColor: Colores.primarioClaro }]}
               onPress={() => {
                 setEmail('usuario@villaguay.gob.ar');
-                setPassword('usuario123');
+                setPassword('password123');
               }}
             >
               <Text style={styles.textoMiniPrueba}>Usuario</Text>
@@ -137,11 +152,21 @@ export default function PantallaLogin() {
             <Pressable
               style={[styles.botonMiniPrueba, { backgroundColor: Colores.acento }]}
               onPress={() => {
-                setEmail('encargado@villaguay.gob.ar');
-                setPassword('admin123');
+                setEmail('marcelo@villaguay.gob.ar');
+                setPassword('password123');
               }}
             >
-              <Text style={[styles.textoMiniPrueba, { color: '#000' }]}>Encargado</Text>
+              <Text style={[styles.textoMiniPrueba, { color: '#000000' }]}>Encargado</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.botonMiniPrueba, { backgroundColor: '#3B82F6' }]}
+              onPress={() => {
+                setEmail('nahuel@villaguay.gob.ar');
+                setPassword('password123');
+              }}
+            >
+              <Text style={styles.textoMiniPrueba}>Director</Text>
             </Pressable>
           </View>
         </View>
@@ -239,11 +264,11 @@ const styles = StyleSheet.create({
   },
   filaPrueba: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   botonMiniPrueba: {
     flex: 1,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 6,
     alignItems: 'center',
   },

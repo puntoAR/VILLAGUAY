@@ -1,180 +1,305 @@
 // src/basedatos/sqlite.ts
-// Base de datos local SQLite
+// Base de datos SQLite local para almacenamiento persistente y fallback para web
 
+import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
-import { Espacio, Deporte, Reserva, Turno, Usuario } from '../tipos';
+import { Espacio, Deporte, Reserva, ReservaFija, BloqueoMantenimiento, Usuario } from '../tipos';
+import { ESPACIOS_MOCK } from '../mocks/espacios';
+import { DEPORTES_MOCK } from '../mocks/deportes';
+import { RESERVAS_MOCK } from '../mocks/reservas';
+import { RESERVAS_FIJAS_MOCK } from '../mocks/fijas';
+import { BLOQUEOS_MOCK } from '../mocks/bloqueos';
+import { USUARIOS_MOCK } from '../mocks/usuarios';
 
-// Apertura sincrónica de la base de datos
-export const db = SQLite.openDatabaseSync('reservas_villaguay.db');
+let dbInstance: SQLite.SQLiteDatabase | null = null;
 
-// Inicialización sincrónica del esquema
-export function inicializarBaseDatosSync() {
-  db.execSync(`
-    PRAGMA journal_mode = WAL;
+// Base de datos en memoria para Web (PC)
+class WebDatabaseMock {
+  async execAsync(_sql: string): Promise<void> {}
 
-    CREATE TABLE IF NOT EXISTS deportes (
-      id TEXT PRIMARY KEY NOT NULL,
-      nombre TEXT NOT NULL,
-      icono TEXT NOT NULL,
-      color TEXT NOT NULL
-    );
+  async runAsync(sql: string, params: any[] = []): Promise<{ changes: number; lastInsertRowId: number }> {
+    const s = sql.toLowerCase();
+    if (s.includes('insert into reservas')) {
+      const [id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, ingresoEn, creadaEn, cancelableHasta, conLuz, montoTotal, estadoPago, nombreUsuario, telefonoUsuario, nombreEspacio] = params;
+      const existe = RESERVAS_MOCK.findIndex(r => r.id === id);
+      const resObj: Reserva = {
+        id,
+        turnoId,
+        espacioId,
+        usuarioId,
+        cantidadPersonas: Number(cantidadPersonas) || 10,
+        codigoQr,
+        estado: estado || 'confirmada',
+        ingresoEn: ingresoEn || null,
+        creadaEn: creadaEn || new Date().toISOString(),
+        cancelableHasta: cancelableHasta || new Date().toISOString(),
+        conLuz: Boolean(conLuz),
+        montoTotal: Number(montoTotal) || 12000,
+        estadoPago: estadoPago || 'pendiente',
+        nombreUsuario,
+        telefonoUsuario,
+        nombreEspacio,
+      };
+      if (existe >= 0) {
+        RESERVAS_MOCK[existe] = resObj;
+      } else {
+        RESERVAS_MOCK.unshift(resObj);
+      }
+    } else if (s.includes('update reservas set estado = "cancelada"')) {
+      const id = params[0];
+      const r = RESERVAS_MOCK.find(x => x.id === id);
+      if (r) r.estado = 'cancelada';
+    } else if (s.includes('update reservas set estado = "cumplida"')) {
+      const id = params[1] ?? params[0];
+      const r = RESERVAS_MOCK.find(x => x.id === id);
+      if (r) {
+        r.estado = 'cumplida';
+        r.ingresoEn = new Date().toISOString();
+      }
+    } else if (s.includes('update reservas set estado = "ausente"')) {
+      const id = params[0];
+      const r = RESERVAS_MOCK.find(x => x.id === id);
+      if (r) r.estado = 'ausente';
+    } else if (s.includes('update reservas set estadopago = ?')) {
+      const [nuevoEstado, id] = params;
+      const r = RESERVAS_MOCK.find(x => x.id === id);
+      if (r) r.estadoPago = nuevoEstado;
+    } else if (s.includes('insert into bloqueos')) {
+      const [id, espacioId, fecha, inicio, fin, motivo, creadoEn] = params;
+      BLOQUEOS_MOCK.push({ id, espacioId, fecha, inicio, fin, motivo, creadoEn });
+    } else if (s.includes('delete from bloqueos')) {
+      const id = params[0];
+      const idx = BLOQUEOS_MOCK.findIndex(b => b.id === id);
+      if (idx >= 0) BLOQUEOS_MOCK.splice(idx, 1);
+    }
+    return { changes: 1, lastInsertRowId: 1 };
+  }
 
-    CREATE TABLE IF NOT EXISTS espacios (
-      id TEXT PRIMARY KEY NOT NULL,
-      nombre TEXT NOT NULL,
-      deporteId TEXT NOT NULL,
-      complejo TEXT NOT NULL,
-      superficie TEXT NOT NULL,
-      techado INTEGER NOT NULL,
-      iluminacion INTEGER NOT NULL,
-      capacidad INTEGER NOT NULL,
-      precioPorHora INTEGER NOT NULL,
-      latitud REAL NOT NULL,
-      longitud REAL NOT NULL,
-      imagenes TEXT NOT NULL,
-      videoUrl TEXT,
-      reglas TEXT NOT NULL,
-      activo INTEGER NOT NULL
-    );
+  async getAllAsync<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    const s = sql.toLowerCase();
+    if (s.includes('from espacios')) {
+      let lista = [...ESPACIOS_MOCK];
+      if (params.length > 0) {
+        if (s.includes('deporteid = ?') && s.includes('complejo = ?')) {
+          lista = lista.filter(e => e.deporteId === params[0] && e.complejo === params[1]);
+        } else if (s.includes('deporteid = ?')) {
+          lista = lista.filter(e => e.deporteId === params[0]);
+        } else if (s.includes('complejo = ?')) {
+          lista = lista.filter(e => e.complejo === params[0]);
+        }
+      }
+      return lista.map(e => ({
+        ...e,
+        latitud: e.coordenadas.latitud,
+        longitud: e.coordenadas.longitud,
+        imagenes: JSON.stringify(e.imagenes),
+      })) as any;
+    }
 
-    CREATE TABLE IF NOT EXISTS turnos (
-      id TEXT PRIMARY KEY NOT NULL,
-      espacioId TEXT NOT NULL,
-      fecha TEXT NOT NULL,
-      inicio TEXT NOT NULL,
-      fin TEXT NOT NULL,
-      estado TEXT NOT NULL,
-      reservaId TEXT,
-      precio INTEGER NOT NULL
-    );
+    if (s.includes('from deportes')) {
+      return DEPORTES_MOCK as any;
+    }
 
-    CREATE TABLE IF NOT EXISTS reservas (
-      id TEXT PRIMARY KEY NOT NULL,
-      turnoId TEXT NOT NULL,
-      espacioId TEXT NOT NULL,
-      usuarioId TEXT NOT NULL,
-      cantidadPersonas INTEGER NOT NULL,
-      codigoQr TEXT NOT NULL,
-      estado TEXT NOT NULL,
-      creadaEn TEXT NOT NULL,
-      cancelableHasta TEXT NOT NULL,
-      conLuz INTEGER DEFAULT 0,
-      montoTotal INTEGER NOT NULL,
-      nombreEspacio TEXT
-    );
+    if (s.includes('from bloqueos')) {
+      let lista = [...BLOQUEOS_MOCK];
+      if (params.length === 2 && s.includes('espacioid = ? and fecha = ?')) {
+        lista = lista.filter(b => b.espacioId === params[0] && b.fecha === params[1]);
+      }
+      return lista as any;
+    }
 
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id TEXT PRIMARY KEY NOT NULL,
-      nombre TEXT NOT NULL,
-      email TEXT NOT NULL,
-      telefono TEXT NOT NULL,
-      rol TEXT NOT NULL,
-      avatarUrl TEXT,
-      password TEXT
-    );
-  `);
+    if (s.includes('from reservas_fijas')) {
+      let lista = [...RESERVAS_FIJAS_MOCK];
+      if (s.includes('espacioid = ? and dia = ?')) {
+        const [espacioId, diaSemana, fecha] = params;
+        lista = lista.filter(
+          f => f.espacioId === espacioId && f.dia === diaSemana && f.activa && f.desde <= fecha && (!f.hasta || f.hasta >= fecha)
+        );
+      }
+      return lista as any;
+    }
 
-  // Sembrar datos iniciales si la tabla de espacios está vacía
-  const count = db.getFirstSync<{ total: number }>('SELECT COUNT(*) as total FROM espacios');
-  if (!count || count.total === 0) {
-    db.withTransactionSync(() => {
-      // 1. Deportes
-      const deportesIniciales: Deporte[] = [
-        { id: 'dep-futbol', nombre: 'Fútbol', icono: 'football-outline', color: '#16A34A' },
-        { id: 'dep-basquet', nombre: 'Básquet', icono: 'basketball-outline', color: '#EA580C' },
-        { id: 'dep-tenis', nombre: 'Tenis', icono: 'tennisball-outline', color: '#CA8A04' },
-        { id: 'dep-voley', nombre: 'Vóley', icono: 'baseball-outline', color: '#0284C7' },
-        { id: 'dep-padel', nombre: 'Pádel', icono: 'tennisball-outline', color: '#9333EA' },
-      ];
-      for (const d of deportesIniciales) {
-        db.runSync(
+    if (s.includes('from reservas')) {
+      let lista = [...RESERVAS_MOCK];
+      if (s.includes('usuarioid = ?')) {
+        lista = lista.filter(r => r.usuarioId === params[0]);
+      } else if (s.includes('espacioid = ? and estado = "confirmada"')) {
+        lista = lista.filter(r => r.espacioId === params[0] && r.estado === 'confirmada');
+      }
+      return lista as any;
+    }
+
+    if (s.includes('from usuarios')) {
+      return USUARIOS_MOCK as any;
+    }
+
+    return [];
+  }
+
+  async getFirstAsync<T = any>(sql: string, params: any[] = []): Promise<T | null> {
+    const s = sql.toLowerCase();
+    if (s.includes('from usuarios')) {
+      if (s.includes('lower(email) = ?')) {
+        const email = String(params[0] || '').toLowerCase().trim();
+        const u = USUARIOS_MOCK.find(x => x.email.toLowerCase().trim() === email);
+        return (u as any) || null;
+      }
+      if (s.includes('id = ?')) {
+        const u = USUARIOS_MOCK.find(x => x.id === params[0]);
+        return (u as any) || null;
+      }
+    }
+    if (s.includes('from reservas')) {
+      if (s.includes('codigogr = ?') || s.includes('codigoqr = ?')) {
+        const r = RESERVAS_MOCK.find(x => x.codigoQr.trim().toUpperCase() === String(params[0]).trim().toUpperCase());
+        return (r as any) || null;
+      }
+      if (s.includes('turnoid = ? and estado = "confirmada"')) {
+        const r = RESERVAS_MOCK.find(x => x.turnoId === params[0] && x.estado === 'confirmada');
+        return (r as any) || null;
+      }
+      if (s.includes('id = ?')) {
+        const r = RESERVAS_MOCK.find(x => x.id === params[0]);
+        return (r as any) || null;
+      }
+    }
+    if (s.includes('from espacios where id = ?')) {
+      const e = ESPACIOS_MOCK.find(x => x.id === params[0]);
+      if (!e) return null;
+      return {
+        ...e,
+        latitud: e.coordenadas.latitud,
+        longitud: e.coordenadas.longitud,
+        imagenes: JSON.stringify(e.imagenes),
+      } as any;
+    }
+    return null;
+  }
+}
+
+const webDbMockInstance = new WebDatabaseMock();
+
+export interface InterfazBD {
+  getAllAsync<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  getFirstAsync<T = any>(sql: string, params?: any[]): Promise<T | null>;
+  runAsync(sql: string, params?: any[]): Promise<any>;
+  execAsync(sql: string): Promise<void>;
+}
+
+export async function obtenerBD(): Promise<InterfazBD> {
+  if (Platform.OS === 'web') {
+    return webDbMockInstance;
+  }
+  try {
+    if (!dbInstance) {
+      dbInstance = await SQLite.openDatabaseAsync('reservas_villaguay.db');
+      await inicializarEsquema(dbInstance);
+    }
+    return dbInstance as unknown as InterfazBD;
+  } catch (e) {
+    console.warn('[SQLite] Fallback a base en memoria:', e);
+    return webDbMockInstance;
+  }
+}
+
+async function inicializarEsquema(db: SQLite.SQLiteDatabase) {
+  try {
+    await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+
+      CREATE TABLE IF NOT EXISTS deportes (
+        id TEXT PRIMARY KEY NOT NULL,
+        nombre TEXT NOT NULL,
+        icono TEXT NOT NULL,
+        color TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS espacios (
+        id TEXT PRIMARY KEY NOT NULL,
+        nombre TEXT NOT NULL,
+        deporteId TEXT NOT NULL,
+        complejo TEXT NOT NULL,
+        superficie TEXT NOT NULL,
+        techado INTEGER NOT NULL,
+        iluminacion INTEGER NOT NULL,
+        capacidad INTEGER NOT NULL,
+        precioPorHora INTEGER NOT NULL,
+        latitud REAL NOT NULL,
+        longitud REAL NOT NULL,
+        imagenes TEXT NOT NULL,
+        videoUrl TEXT,
+        reglas TEXT NOT NULL,
+        activo INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS reservas (
+        id TEXT PRIMARY KEY NOT NULL,
+        turnoId TEXT NOT NULL,
+        espacioId TEXT NOT NULL,
+        usuarioId TEXT NOT NULL,
+        cantidadPersonas INTEGER NOT NULL,
+        codigoQr TEXT NOT NULL,
+        estado TEXT NOT NULL,
+        ingresoEn TEXT,
+        creadaEn TEXT NOT NULL,
+        cancelableHasta TEXT NOT NULL,
+        conLuz INTEGER DEFAULT 0,
+        montoTotal INTEGER DEFAULT 0,
+        estadoPago TEXT DEFAULT 'pendiente',
+        nombreUsuario TEXT,
+        telefonoUsuario TEXT,
+        nombreEspacio TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS reservas_fijas (
+        id TEXT PRIMARY KEY NOT NULL,
+        espacioId TEXT NOT NULL,
+        titular TEXT NOT NULL,
+        dia INTEGER NOT NULL,
+        inicio TEXT NOT NULL,
+        fin TEXT NOT NULL,
+        desde TEXT NOT NULL,
+        hasta TEXT,
+        activa INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS bloqueos (
+        id TEXT PRIMARY KEY NOT NULL,
+        espacioId TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        inicio TEXT,
+        fin TEXT,
+        motivo TEXT NOT NULL,
+        creadoEn TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id TEXT PRIMARY KEY NOT NULL,
+        nombre TEXT NOT NULL,
+        email TEXT NOT NULL,
+        telefono TEXT NOT NULL,
+        rol TEXT NOT NULL,
+        espaciosFavoritos TEXT NOT NULL,
+        cancelacionesTardias INTEGER NOT NULL,
+        ausencias INTEGER NOT NULL,
+        password TEXT,
+        avatarUrl TEXT
+      );
+    `);
+
+    // Sembrar 11 espacios y datos si la tabla está vacía
+    const count = await db.getFirstAsync<{ total: number }>('SELECT COUNT(*) as total FROM espacios');
+    if (!count || count.total === 0) {
+      for (const d of DEPORTES_MOCK) {
+        await db.runAsync(
           'INSERT OR REPLACE INTO deportes (id, nombre, icono, color) VALUES (?, ?, ?, ?)',
           [d.id, d.nombre, d.icono, d.color]
         );
       }
 
-      // 2. Canchas Municipales de Villaguay
-      const espaciosIniciales: Espacio[] = [
-        {
-          id: 'esp-01',
-          nombre: 'Cancha 1 — Fútbol 5 Sintético',
-          deporteId: 'dep-futbol',
-          complejo: 'Polideportivo Municipal',
-          superficie: 'Césped sintético con caucho',
-          techado: false,
-          iluminacion: true,
-          capacidad: 10,
-          precioPorHora: 12000,
-          coordenadas: { latitud: -31.8642, longitud: -59.0281 },
-          imagenes: [
-            'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop',
-          ],
-          videoUrl: 'local:recorrido_espacio',
-          reglas: 'Uso obligatorio de zapatillas de fútbol 5 (sin tapones de aluminio). Cancelaciones con 4hs de anticipación.',
-          activo: true,
-        },
-        {
-          id: 'esp-02',
-          nombre: 'Gimnasio Techado Parquet (Básquet/Vóley)',
-          deporteId: 'dep-basquet',
-          complejo: 'Polideportivo Municipal',
-          superficie: 'Parquet flotante lustrado',
-          techado: true,
-          iluminacion: true,
-          capacidad: 16,
-          precioPorHora: 15000,
-          coordenadas: { latitud: -31.8645, longitud: -59.0278 },
-          imagenes: [
-            'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&fit=crop',
-          ],
-          videoUrl: 'local:recorrido_espacio',
-          reglas: 'Calzado deportivo con suela de goma limpia exclusivamente. Prohibido alimentos y bebidas azucaradas.',
-          activo: true,
-        },
-        {
-          id: 'esp-03',
-          nombre: 'Cancha Tenis 1 — Polvo de Ladrillo',
-          deporteId: 'dep-tenis',
-          complejo: 'Parque Berduc',
-          superficie: 'Polvo de ladrillo',
-          techado: false,
-          iluminacion: true,
-          capacidad: 4,
-          precioPorHora: 9000,
-          coordenadas: { latitud: -31.8595, longitud: -59.0340 },
-          imagenes: [
-            'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=800&auto=format&fit=crop',
-          ],
-          videoUrl: null,
-          reglas: 'Pasar la esterilla y regar al finalizar el turno. Calzado específico de tenis sin taco.',
-          activo: true,
-        },
-        {
-          id: 'esp-04',
-          nombre: 'Cancha Pádel Cristal Techada',
-          deporteId: 'dep-padel',
-          complejo: 'Parque Berduc',
-          superficie: 'Césped sintético azul y blindex',
-          techado: true,
-          iluminacion: true,
-          capacidad: 4,
-          precioPorHora: 14000,
-          coordenadas: { latitud: -31.8598, longitud: -59.0335 },
-          imagenes: [
-            'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&auto=format&fit=crop',
-          ],
-          videoUrl: 'local:recorrido_espacio',
-          reglas: 'Paletas con cordón de seguridad ajustado. Ingreso 5 minutos antes.',
-          activo: true,
-        },
-      ];
-
-      for (const e of espaciosIniciales) {
-        db.runSync(
-          `INSERT OR REPLACE INTO espacios 
-          (id, nombre, deporteId, complejo, superficie, techado, iluminacion, capacidad, precioPorHora, latitud, longitud, imagenes, videoUrl, reglas, activo) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      for (const e of ESPACIOS_MOCK) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO espacios (id, nombre, deporteId, complejo, superficie, techado, iluminacion, capacidad, precioPorHora, latitud, longitud, imagenes, videoUrl, reglas, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             e.id,
             e.nombre,
@@ -195,292 +320,67 @@ export function inicializarBaseDatosSync() {
         );
       }
 
-      // 3. Usuarios base
-      const usuariosIniciales: Usuario[] = [
-        {
-          id: 'usr-jugador-1',
-          nombre: 'Usuario Demo',
-          email: 'usuario@villaguay.gob.ar',
-          telefono: '3455-401122',
-          rol: 'jugador',
-          password: 'usuario123',
-        },
-        {
-          id: 'usr-encargado-1',
-          nombre: 'Encargado Turnos',
-          email: 'encargado@villaguay.gob.ar',
-          telefono: '3455-442211',
-          rol: 'encargado',
-          password: 'admin123',
-        },
-      ];
-
-      for (const u of usuariosIniciales) {
-        db.runSync(
-          'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, avatarUrl, password) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [u.id, u.nombre, u.email, u.telefono, u.rol, u.avatarUrl || null, u.password || 'usuario123']
+      for (const f of RESERVAS_FIJAS_MOCK) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO reservas_fijas (id, espacioId, titular, dia, inicio, fin, desde, hasta, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [f.id, f.espacioId, f.titular, f.dia, f.inicio, f.fin, f.desde, f.hasta, f.activa ? 1 : 0]
         );
       }
 
-      // 4. Turnos para el día de hoy
-      const hoy = new Date().toISOString().split('T')[0];
-      const horarios = ['17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
-      horarios.forEach((inicio, i) => {
-        const finHora = parseInt(inicio.split(':')[0]) + 1;
-        const fin = `${finHora}:00`;
-        const idTurno = `tur-01-${hoy}-${inicio.replace(':', '')}`;
-        db.runSync(
-          'INSERT OR REPLACE INTO turnos (id, espacioId, fecha, inicio, fin, estado, reservaId, precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [idTurno, 'esp-01', hoy, inicio, fin, i === 2 ? 'reservado' : 'libre', i === 2 ? 'res-01-demo' : null, 12000]
+      for (const b of BLOQUEOS_MOCK) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO bloqueos (id, espacioId, fecha, inicio, fin, motivo, creadoEn) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [b.id, b.espacioId, b.fecha, b.inicio, b.fin, b.motivo, b.creadoEn]
         );
-      });
+      }
 
-      // 5. Reserva de muestra
-      db.runSync(
-        `INSERT OR REPLACE INTO reservas 
-        (id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, creadaEn, cancelableHasta, conLuz, montoTotal, nombreEspacio) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          'res-01-demo',
-          `tur-01-${hoy}-1900`,
-          'esp-01',
-          'usr-jugador-1',
-          10,
-          'QR-VGY-01-1900',
-          'confirmada',
-          new Date().toISOString(),
-          new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
-          1,
-          14500,
-          'Cancha 1 — Fútbol 5 Sintético',
-        ]
-      );
-    });
+      for (const u of USUARIOS_MOCK) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO usuarios (id, nombre, email, telefono, rol, espaciosFavoritos, cancelacionesTardias, ausencias, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [u.id, u.nombre, u.email, u.telefono, u.rol, JSON.stringify(u.espaciosFavoritos), u.cancelacionesTardias, u.ausencias, u.password || 'password123']
+        );
+      }
+
+      for (const r of RESERVAS_MOCK) {
+        await db.runAsync(
+          'INSERT OR REPLACE INTO reservas (id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, ingresoEn, creadaEn, cancelableHasta, conLuz, montoTotal, estadoPago, nombreUsuario, telefonoUsuario, nombreEspacio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            r.id,
+            r.turnoId,
+            r.espacioId,
+            r.usuarioId,
+            r.cantidadPersonas,
+            r.codigoQr,
+            r.estado,
+            r.ingresoEn,
+            r.creadaEn,
+            r.cancelableHasta,
+            r.conLuz ? 1 : 0,
+            r.montoTotal || 12000,
+            r.estadoPago || 'pendiente',
+            r.nombreUsuario || null,
+            r.telefonoUsuario || null,
+            r.nombreEspacio || null,
+          ]
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('[SQLite] Error creando tablas:', err);
   }
 }
 
-// Ejecutar inicialización sincrónica inmediatamente al importar el módulo
-try {
-  inicializarBaseDatosSync();
-} catch (e) {
-  console.warn('[SQLite] Error en inicialización sincrónica inmediata:', e);
-}
-
-// Métodos de acceso sincrónicos
+// Servicio auxiliar sincrónico seguro
 export const BDService = {
-  // Espacios
-  obtenerEspaciosSync(filtroDeporte?: string): Espacio[] {
-    try {
-      let sql = 'SELECT * FROM espacios WHERE activo = 1';
-      const params: any[] = [];
-      if (filtroDeporte && filtroDeporte !== 'todos') {
-        sql += ' AND deporteId = ?';
-        params.push(filtroDeporte);
-      }
-      const rows = db.getAllSync<any>(sql, params);
-      return rows.map(r => ({
-        ...r,
-        techado: Boolean(r.techado),
-        iluminacion: Boolean(r.iluminacion),
-        activo: Boolean(r.activo),
-        imagenes: JSON.parse(r.imagenes || '[]'),
-        coordenadas: { latitud: r.latitud, longitud: r.longitud },
-      }));
-    } catch {
-      inicializarBaseDatosSync();
-      return [];
-    }
-  },
-
-  obtenerEspacioPorIdSync(id: string): Espacio | null {
-    try {
-      const r = db.getFirstSync<any>('SELECT * FROM espacios WHERE id = ?', [id]);
-      if (!r) return null;
-      return {
-        ...r,
-        techado: Boolean(r.techado),
-        iluminacion: Boolean(r.iluminacion),
-        activo: Boolean(r.activo),
-        imagenes: JSON.parse(r.imagenes || '[]'),
-        coordenadas: { latitud: r.latitud, longitud: r.longitud },
-      };
-    } catch {
-      inicializarBaseDatosSync();
-      return null;
-    }
-  },
-
-  obtenerDeportesSync(): Deporte[] {
-    try {
-      return db.getAllSync<Deporte>('SELECT * FROM deportes');
-    } catch {
-      inicializarBaseDatosSync();
-      try {
-        return db.getAllSync<Deporte>('SELECT * FROM deportes');
-      } catch {
-        return [
-          { id: 'dep-futbol', nombre: 'Fútbol', icono: 'football-outline', color: '#16A34A' },
-          { id: 'dep-basquet', nombre: 'Básquet', icono: 'basketball-outline', color: '#EA580C' },
-          { id: 'dep-tenis', nombre: 'Tenis', icono: 'tennisball-outline', color: '#CA8A04' },
-          { id: 'dep-voley', nombre: 'Vóley', icono: 'baseball-outline', color: '#0284C7' },
-          { id: 'dep-padel', nombre: 'Pádel', icono: 'tennisball-outline', color: '#9333EA' },
-        ];
-      }
-    }
-  },
-
-  // Turnos
-  obtenerTurnosDiaSync(espacioId: string, fecha: string): Turno[] {
-    let rows = db.getAllSync<Turno>(
-      'SELECT * FROM turnos WHERE espacioId = ? AND fecha = ? ORDER BY inicio ASC',
-      [espacioId, fecha]
-    );
-
-    // Si aún no se generaron turnos para este día, generarlos dinámicamente
-    if (!rows || rows.length === 0) {
-      db.withTransactionSync(() => {
-        const horarios = ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
-        horarios.forEach(inicio => {
-          const finHora = parseInt(inicio.split(':')[0]) + 1;
-          const fin = `${finHora}:00`;
-          const idTurno = `tur-${espacioId}-${fecha}-${inicio.replace(':', '')}`;
-          db.runSync(
-            'INSERT OR REPLACE INTO turnos (id, espacioId, fecha, inicio, fin, estado, reservaId, precio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [idTurno, espacioId, fecha, inicio, fin, 'libre', null, 12000]
-          );
-        });
-      });
-      rows = db.getAllSync<Turno>(
-        'SELECT * FROM turnos WHERE espacioId = ? AND fecha = ? ORDER BY inicio ASC',
-        [espacioId, fecha]
-      );
-    }
-    return rows;
-  },
-
-  // Reservas
-  crearReservaSync(datos: {
-    espacioId: string;
-    nombreEspacio: string;
-    turnoId: string;
-    usuarioId: string;
-    cantidadPersonas: number;
-    conLuz: boolean;
-    montoTotal: number;
-  }): Reserva {
-    const id = `res-${Date.now().toString().slice(-5)}`;
-    const codigoQr = `QR-VGY-${datos.espacioId}-${Date.now().toString().slice(-4)}`;
-    const creadaEn = new Date().toISOString();
-    const cancelableHasta = new Date(Date.now() + 4 * 3600 * 1000).toISOString();
-
-    db.withTransactionSync(() => {
-      // 1. Insertar reserva
-      db.runSync(
-        `INSERT INTO reservas 
-        (id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, creadaEn, cancelableHasta, conLuz, montoTotal, nombreEspacio)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          id,
-          datos.turnoId,
-          datos.espacioId,
-          datos.usuarioId,
-          datos.cantidadPersonas,
-          codigoQr,
-          'confirmada',
-          creadaEn,
-          cancelableHasta,
-          datos.conLuz ? 1 : 0,
-          datos.montoTotal,
-          datos.nombreEspacio,
-        ]
-      );
-
-      // 2. Marcar turno como reservado
-      db.runSync(
-        'UPDATE turnos SET estado = "reservado", reservaId = ? WHERE id = ?',
-        [id, datos.turnoId]
-      );
-    });
-
-    return {
-      id,
-      turnoId: datos.turnoId,
-      espacioId: datos.espacioId,
-      usuarioId: datos.usuarioId,
-      cantidadPersonas: datos.cantidadPersonas,
-      codigoQr,
-      estado: 'confirmada',
-      creadaEn,
-      cancelableHasta,
-      conLuz: datos.conLuz,
-      montoTotal: datos.montoTotal,
-      nombreEspacio: datos.nombreEspacio,
-    };
-  },
-
-  cancelarReservaSync(reservaId: string): boolean {
-    let exito = false;
-    db.withTransactionSync(() => {
-      const res = db.getFirstSync<Reserva>('SELECT * FROM reservas WHERE id = ?', [reservaId]);
-      if (res) {
-        db.runSync('UPDATE reservas SET estado = "cancelada" WHERE id = ?', [reservaId]);
-        db.runSync('UPDATE turnos SET estado = "libre", reservaId = NULL WHERE id = ?', [res.turnoId]);
-        exito = true;
-      }
-    });
-    return exito;
-  },
-
-  obtenerMisReservasSync(usuarioId: string): Reserva[] {
-    return db.getAllSync<Reserva>(
-      'SELECT * FROM reservas WHERE usuarioId = ? ORDER BY creadaEn DESC',
-      [usuarioId]
-    );
-  },
-
-  validarIngresoQrSync(codigoQr: string): { exito: boolean; mensaje: string; reserva?: Reserva } {
-    const res = db.getFirstSync<Reserva>(
-      'SELECT * FROM reservas WHERE codigoQr = ?',
-      [codigoQr]
-    );
-
-    if (!res) {
-      return { exito: false, mensaje: 'Código QR inexistente o no emitido por Deportes Villaguay.' };
-    }
-
-    if (res.estado === 'cancelada') {
-      return { exito: false, mensaje: 'Este turno fue cancelado previamente por el titular.' };
-    }
-
-    if (res.estado === 'cumplida') {
-      return { exito: false, mensaje: 'Este turno ya fue utilizado para ingresar anteriormente.' };
-    }
-
-    // Marcar como cumplida
-    db.runSync('UPDATE reservas SET estado = "cumplida" WHERE id = ?', [res.id]);
-    return {
-      exito: true,
-      mensaje: `¡Ingreso autorizado! Cancha: ${res.nombreEspacio || res.espacioId}`,
-      reserva: { ...res, estado: 'cumplida' },
-    };
-  },
-
-  // Usuarios
   buscarUsuarioPorEmailSync(email: string): Usuario | null {
-    return db.getFirstSync<Usuario>(
-      'SELECT * FROM usuarios WHERE LOWER(email) = ?',
-      [email.toLowerCase().trim()]
-    );
+    const e = email.toLowerCase().trim();
+    return USUARIOS_MOCK.find(u => u.email.toLowerCase().trim() === e) || null;
   },
-
   obtenerUsuarioPorIdSync(id: string): Usuario | null {
-    return db.getFirstSync<Usuario>(
-      'SELECT * FROM usuarios WHERE id = ?',
-      [id]
-    );
+    return USUARIOS_MOCK.find(u => u.id === id) || null;
   },
-
   actualizarAvatarUsuarioSync(usuarioId: string, avatarUrl: string) {
-    db.runSync('UPDATE usuarios SET avatarUrl = ? WHERE id = ?', [avatarUrl, usuarioId]);
-  }
+    const u = USUARIOS_MOCK.find(x => x.id === usuarioId);
+    if (u) u.avatarUrl = avatarUrl;
+  },
 };

@@ -1,9 +1,8 @@
 // src/app/(tabs)/turnos.tsx
-// Listado de reservas y código QR
+// Listado de reservas: Próximos Turnos e Historial con código QR offline
 
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Pressable } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, Pressable, RefreshControl } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../contexto/AuthContext';
 import { useTema } from '../../contexto/ThemeContext';
@@ -12,145 +11,221 @@ import { EstadoVacio } from '../../componentes/EstadoVacio';
 import { Icono } from '../../componentes/Icono';
 import { Colores } from '../../constantes/tema';
 import { Haptica } from '../../servicios/haptica';
-import { ApiCatedraServicio } from '../../servicios/api';
+import { ReservasServicio } from '../../servicios/reservas';
+import { esError } from '../../servicios/api';
 import { Reserva } from '../../tipos';
 
 export default function PantallaMisTurnos() {
   const { colores } = useTema();
   const { usuario } = useAuth();
-  const queryClient = useQueryClient();
 
   const usuarioId = usuario?.id || 'usr-jugador-1';
 
-  // Consulta de reservas con TanStack Query
-  const {
-    data: reservas = [],
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ['mis-reservas', usuarioId],
-    queryFn: () => ApiCatedraServicio.obtenerMisReservas(usuarioId),
-  });
+  const [pestana, setPestana] = useState<'proximos' | 'historial'>('proximos');
+  const [proximas, setProximas] = useState<Reserva[]>([]);
+  const [pasadas, setPasadas] = useState<Reserva[]>([]);
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [refrescando, setRefrescando] = useState<boolean>(false);
 
-  // Mutación para cancelar turno e invalidar la consulta
-  const mutacionCancelar = useMutation({
-    mutationFn: (reservaId: string) => ApiCatedraServicio.cancelarReserva(reservaId),
-    onSuccess: () => {
-      Haptica.exito();
-      queryClient.invalidateQueries({ queryKey: ['mis-reservas'] });
-      queryClient.invalidateQueries({ queryKey: ['turnos'] });
-      Alert.alert('Turno cancelado', 'Tu reserva fue cancelada y el turno quedó liberado.');
-    },
-    onError: () => {
-      Haptica.error();
-      Alert.alert('Error', 'No se pudo cancelar el turno.');
-    },
-  });
+  const cargarReservas = useCallback(async () => {
+    try {
+      const resp = await ReservasServicio.obtenerMisReservas(usuarioId);
+      if (!esError(resp)) {
+        setProximas(resp.datos.proximas);
+        setPasadas(resp.datos.pasadas);
+      }
+    } catch (err) {
+      console.warn('Error cargando reservas:', err);
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
+    }
+  }, [usuarioId]);
+
+  useEffect(() => {
+    cargarReservas();
+  }, [cargarReservas]);
+
+  const manejarRefresco = () => {
+    setRefrescando(true);
+    cargarReservas();
+  };
 
   const confirmarCancelacion = (reserva: Reserva) => {
+    const ahora = new Date();
+    const limite = new Date(reserva.cancelableHasta);
+    const esTardia = ahora > limite;
+
+    const mensajeAdvertencia = esTardia
+      ? 'Faltan menos de 4 horas para el turno. La cancelación quedará registrada como tardía en tu cuenta municipal.'
+      : 'Estás a tiempo (más de 4 horas de anticipación). El turno quedará liberado sin penalizaciones.';
+
     Alert.alert(
       'Cancelar Reserva',
-      `¿Deseás cancelar tu turno en ${reserva.nombreEspacio || 'la cancha'}?`,
+      `${mensajeAdvertencia}\n\n¿Confirmás la cancelación?`,
       [
         { text: 'Volver', style: 'cancel' },
         {
-          text: 'Sí, cancelar',
+          text: 'Sí, cancelar turno',
           style: 'destructive',
-          onPress: () => mutacionCancelar.mutate(reserva.id),
+          onPress: async () => {
+            const resp = await ReservasServicio.cancelarReserva(reserva.id, usuarioId);
+            if (!esError(resp)) {
+              await Haptica.exito();
+              Alert.alert('Turno Cancelado', 'El horario fue liberado correctamente.');
+              cargarReservas();
+            } else {
+              await Haptica.error();
+              Alert.alert('Error', resp.error.mensaje);
+            }
+          },
         },
       ]
     );
   };
 
-  if (isLoading) {
-    return <EstadoCarga mensaje="Cargando tus turnos y pases QR..." />;
+  if (cargando) {
+    return <EstadoCarga mensaje="Cargando tus reservas y pases de acceso..." />;
   }
+
+  const listaActual = pestana === 'proximos' ? proximas : pasadas;
 
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+      {/* Selector de Pestañas */}
+      <View style={[styles.barraPestanas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+        <Pressable
+          style={[
+            styles.botonPestana,
+            pestana === 'proximos' && { backgroundColor: Colores.primarioClaro },
+          ]}
+          onPress={() => setPestana('proximos')}
+        >
+          <Text
+            style={[
+              styles.textoPestana,
+              { color: pestana === 'proximos' ? '#FFFFFF' : colores.textoSecundario },
+            ]}
+          >
+            Próximos Turnos ({proximas.length})
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            styles.botonPestana,
+            pestana === 'historial' && { backgroundColor: Colores.primarioClaro },
+          ]}
+          onPress={() => setPestana('historial')}
+        >
+          <Text
+            style={[
+              styles.textoPestana,
+              { color: pestana === 'historial' ? '#FFFFFF' : colores.textoSecundario },
+            ]}
+          >
+            Historial ({pasadas.length})
+          </Text>
+        </Pressable>
+      </View>
+
       <FlatList
-        data={reservas}
+        data={listaActual}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
-        onRefresh={refetch}
-        refreshing={isLoading}
+        refreshControl={
+          <RefreshControl
+            refreshing={refrescando}
+            onRefresh={manejarRefresco}
+            tintColor={Colores.primarioClaro}
+          />
+        }
         ListEmptyComponent={
           <EstadoVacio
             icono="calendar-outline"
-            titulo="No tenés turnos reservados"
-            subtitulo="Explorá las canchas disponibles y reservá tu horario favorito."
+            titulo={pestana === 'proximos' ? 'No tenés turnos próximos' : 'No tenés turnos pasados'}
+            subtitulo={
+              pestana === 'proximos'
+                ? 'Elegí una cancha y reservá tu horario favorito.'
+                : 'Acá vas a ver los turnos anteriores, asistencias y cancelaciones.'
+            }
           />
         }
         renderItem={({ item }) => {
           const esCancelada = item.estado === 'cancelada';
           const esCumplida = item.estado === 'cumplida';
+          const esAusente = item.estado === 'ausente';
+
+          let colorBadge = colores.libre;
+          let colorTextoBadge = colores.libreTexto;
+          let etiqueta = 'CONFIRMADA';
+
+          if (esCancelada) {
+            colorBadge = '#FEE2E2';
+            colorTextoBadge = '#B91C1C';
+            etiqueta = 'CANCELADA';
+          } else if (esCumplida) {
+            colorBadge = '#E0F2FE';
+            colorTextoBadge = '#0369A1';
+            etiqueta = 'INGRESADO';
+          } else if (esAusente) {
+            colorBadge = '#FEF3C7';
+            colorTextoBadge = '#B45309';
+            etiqueta = 'AUSENTE';
+          }
 
           return (
             <View style={[styles.tarjetaReserva, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-              {/* Cabecera de la Reserva */}
+              {/* Cabecera */}
               <View style={styles.filaCabecera}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.nombreEspacio, { color: colores.texto }]}>
-                    {item.nombreEspacio || 'Cancha Municipal'}
+                    {item.nombreEspacio || item.espacioId}
                   </Text>
                   <Text style={[styles.fechaTexto, { color: colores.textoSecundario }]}>
-                    Turno: {item.creadaEn.split('T')[0]}
+                    Fecha: {item.creadaEn.split('T')[0]} • {item.cantidadPersonas} jugadores
                   </Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.badgeEstado,
-                    {
-                      backgroundColor: esCancelada
-                        ? colores.reservado
-                        : esCumplida
-                        ? '#E0F2FE'
-                        : colores.libre,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.textoBadge,
-                      {
-                        color: esCancelada
-                          ? colores.reservadoTexto
-                          : esCumplida
-                          ? '#0369A1'
-                          : colores.libreTexto,
-                      },
-                    ]}
-                  >
-                    {item.estado.toUpperCase()}
-                  </Text>
+                <View style={[styles.badgeEstado, { backgroundColor: colorBadge }]}>
+                  <Text style={[styles.textoBadge, { color: colorTextoBadge }]}>{etiqueta}</Text>
                 </View>
               </View>
 
-              {/* Código QR del Turno */}
-              <View style={styles.bloqueQr}>
-                <View style={styles.qrContenedor}>
-                  <QRCode value={item.codigoQr} size={110} color="#0F172A" backgroundColor="#FFFFFF" />
+              {/* Bloque QR si la reserva está confirmada */}
+              {item.estado === 'confirmada' ? (
+                <View style={styles.bloqueQr}>
+                  <View style={styles.qrContenedor}>
+                    <QRCode value={item.codigoQr} size={95} color="#0F172A" backgroundColor="#FFFFFF" />
+                  </View>
+                  <View style={styles.infoTurno}>
+                    <Text style={[styles.codigoTexto, { color: colores.texto }]}>{item.codigoQr}</Text>
+                    <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
+                      Presentá este código offline al encargado al ingresar al predio.
+                    </Text>
+                    {item.conLuz && (
+                      <Text style={[styles.badgeLuz, { color: '#B45309' }]}>
+                        💡 Con iluminación nocturna
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.infoTurno}>
-                  <Text style={[styles.codigoTexto, { color: colores.texto }]}>
-                    {item.codigoQr}
+              ) : (
+                <View style={[styles.bloqueDetalle, { backgroundColor: 'rgba(150, 150, 150, 0.05)' }]}>
+                  <Text style={[styles.subtextoQr, { color: colores.textoSecundario }]}>
+                    Código de reserva: {item.codigoQr}
                   </Text>
-                  <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
-                    Presentá este código QR en la entrada para que el encargado valide tu ingreso.
-                  </Text>
-
-                  {item.conLuz && (
-                    <Text style={[styles.badgeLuz, { color: '#B45309' }]}>
-                      💡 Con luz nocturna incluida
+                  {item.montoTotal && (
+                    <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
+                      Monto: ${item.montoTotal.toLocaleString('es-AR')}
                     </Text>
                   )}
                 </View>
-              </View>
+              )}
 
-              {/* Botón para cancelar reserva */}
-              {!esCancelada && !esCumplida && (
+              {/* Botón Cancelar sólo para próximos confirmados */}
+              {item.estado === 'confirmada' && (
                 <Pressable
                   style={({ pressed }) => [
                     styles.botonCancelar,
@@ -174,6 +249,24 @@ const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
   },
+  barraPestanas: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+  },
+  botonPestana: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  textoPestana: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   lista: {
     padding: 16,
     paddingBottom: 32,
@@ -191,7 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   nombreEspacio: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   fechaTexto: {
@@ -225,7 +318,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   codigoTexto: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
   subtextoQr: {
@@ -236,6 +329,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
+  },
+  bloqueDetalle: {
+    padding: 10,
+    borderRadius: 8,
+    gap: 4,
   },
   botonCancelar: {
     flexDirection: 'row',

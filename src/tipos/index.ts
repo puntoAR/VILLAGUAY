@@ -1,5 +1,5 @@
 // src/tipos/index.ts
-// Tipos y modelos de datos
+// Tipos del Sistema de Reservas Deportivas - Dirección de Deportes de Villaguay
 
 export interface Coordenadas {
   latitud: number;
@@ -30,20 +30,22 @@ export interface Deporte {
   color: string;
 }
 
-export type EstadoTurno = 'libre' | 'reservado' | 'mantenimiento';
+export type EstadoTurno = 'libre' | 'reservado' | 'fijo' | 'mantenimiento';
 
 export interface Turno {
   id: string;
   espacioId: string;
-  fecha: string; // YYYY-MM-DD
-  inicio: string; // HH:MM
-  fin: string; // HH:MM
+  fecha: string; // "AAAA-MM-DD"
+  inicio: string; // "HH:MM"
+  fin: string; // "HH:MM"
   estado: EstadoTurno;
   reservaId: string | null;
+  motivoBloqueo: string | null;
   precio: number;
 }
 
-export type EstadoReserva = 'confirmada' | 'cancelada' | 'cumplida';
+export type EstadoReserva = 'confirmada' | 'cancelada' | 'cumplida' | 'ausente';
+export type EstadoPago = 'pagado' | 'pendiente';
 
 export interface Reserva {
   id: string;
@@ -53,11 +55,39 @@ export interface Reserva {
   cantidadPersonas: number;
   codigoQr: string;
   estado: EstadoReserva;
-  creadaEn: string;
-  cancelableHasta: string;
+  ingresoEn: string | null;
+  creadaEn: string; // ISO 8601
+  cancelableHasta: string; // ISO 8601
   conLuz?: boolean;
-  montoTotal: number;
+  montoTotal?: number;
+  estadoPago?: EstadoPago;
+  nombreUsuario?: string;
+  telefonoUsuario?: string;
   nombreEspacio?: string;
+}
+
+export interface MetricasMacro {
+  recaudacionTotal: number;
+  recaudacionCobrada: number;
+  recaudacionPendiente: number;
+  totalReservas: number;
+  tasaOcupacion: number;
+  reservasPorDeporte: { deporte: string; cantidad: number; color: string }[];
+  rankingEspacios: { nombre: string; reservas: number }[];
+  totalCanceladas: number;
+  totalAusentes: number;
+}
+
+export interface ReservaFija {
+  id: string;
+  espacioId: string;
+  titular: string;
+  dia: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = domingo
+  inicio: string;
+  fin: string;
+  desde: string; // "AAAA-MM-DD"
+  hasta: string | null;
+  activa: boolean;
 }
 
 export type Rol = 'jugador' | 'encargado' | 'administrador';
@@ -68,11 +98,57 @@ export interface Usuario {
   email: string;
   telefono: string;
   rol: Rol;
+  espaciosFavoritos: string[];
+  cancelacionesTardias: number;
+  ausencias: number;
+  password?: string;
   avatarUrl?: string | null;
+}
+
+export interface CredencialesLogin {
+  email: string;
   password?: string;
 }
 
-export interface RespuestaApi<T> {
+export interface DatosRegistro {
+  nombre: string;
+  email: string;
+  telefono: string;
+  password?: string;
+  rol?: Rol;
+}
+
+export interface RespuestaAuth {
+  usuario: Usuario;
+  token: string;
+}
+
+export interface BloqueoMantenimiento {
+  id: string;
+  espacioId: string;
+  fecha: string;
+  inicio: string | null;
+  fin: string | null;
+  motivo: string;
+  creadoEn: string;
+}
+
+export interface MetaApi {
+  total: number;
+  pagina: number;
+  porPagina: number;
+}
+
+export interface RespuestaExito<T> {
   datos: T;
-  mensaje?: string;
+  meta?: MetaApi;
+}
+
+export interface DetalleErrorApi {
+  codigo: string;
+  mensaje: string;
+}
+
+export interface RespuestaError {
+  error: DetalleErrorApi;
 }

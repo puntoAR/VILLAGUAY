@@ -1,5 +1,5 @@
 // src/app/(tabs)/perfil.tsx
-// Perfil de usuario y configuración
+// Perfil del usuario y configuración general
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, Alert, Pressable, ScrollView } from 'react-native';
@@ -21,17 +21,15 @@ export default function PantallaPerfil() {
 
   const [cambiandoFoto, setCambiandoFoto] = useState(false);
 
-  // Cambiar foto y guardar en almacenamiento permanente
   const cambiarFotoPerfil = async () => {
     try {
       setCambiandoFoto(true);
       const uriPersistida = await MultimediaServicio.seleccionarFotoPerfil();
       if (uriPersistida && usuario) {
-        // Actualizar en SQLite sincrónicamente y en el contexto
         BDService.actualizarAvatarUsuarioSync(usuario.id, uriPersistida);
         actualizarAvatar(uriPersistida);
-        Haptica.exito();
-        Alert.alert('Foto actualizada', 'Tu foto de perfil fue guardada correctamente.');
+        await Haptica.exito();
+        Alert.alert('Foto actualizada', 'Tu foto de perfil fue actualizada correctamente.');
       }
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'No se pudo actualizar la foto.');
@@ -40,26 +38,24 @@ export default function PantallaPerfil() {
     }
   };
 
-  // Verificación de biometría
   const probarBiometria = async () => {
-    Haptica.seleccion();
+    await Haptica.seleccion();
     const ok = await autenticarBiometria();
     if (ok) {
-      Haptica.exito();
-      Alert.alert('Identidad verificada ✅', 'Autenticación biométrica exitosa mediante huella o rostro.');
+      await Haptica.exito();
+      Alert.alert('Identidad verificada', 'Autenticación biométrica exitosa.');
     } else {
-      Haptica.error();
-      Alert.alert('Error biométrico', 'No se pudo verificar la huella o el rostro.');
+      await Haptica.error();
+      Alert.alert('Error', 'No se pudo verificar la huella o el rostro.');
     }
   };
 
-  // Abrir portal institucional
   const abrirPortalMunicipal = async () => {
-    Haptica.seleccion();
+    await Haptica.seleccion();
     await WebBrowser.openBrowserAsync('https://villaguay.gob.ar/deportes');
   };
 
-  const handleCerrarSesion = async () => {
+  const handleCerrarSesion = () => {
     Alert.alert('Cerrar Sesión', '¿Deseás salir de tu cuenta?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -77,7 +73,7 @@ export default function PantallaPerfil() {
     <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
       {/* Tarjeta de Usuario */}
       <View style={[styles.tarjetaUsuario, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-        <Pressable onPress={cambiarFotoPerfil} style={styles.avatarContenedor}>
+        <Pressable onPress={cambiarFotoPerfil} style={styles.avatarContenedor} disabled={cambiandoFoto}>
           {usuario?.avatarUrl ? (
             <Image
               source={{ uri: usuario.avatarUrl }}
@@ -102,13 +98,36 @@ export default function PantallaPerfil() {
           <Text style={[styles.email, { color: colores.textoSecundario }]}>
             {usuario?.email || 'usuario@villaguay.gob.ar'}
           </Text>
-          <Text style={[styles.rol, { color: Colores.primarioClaro }]}>
-            Rol: {(usuario?.rol || 'jugador').toUpperCase()}
+          <View style={styles.filaRol}>
+            <Text style={[styles.rol, { color: Colores.primarioClaro }]}>
+              Rol: {(usuario?.rol || 'jugador').toUpperCase()}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Historial de penalizaciones */}
+      <View style={[styles.tarjetaMetricas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+        <View style={styles.itemMetrica}>
+          <Text style={[styles.valorMetrica, { color: colores.texto }]}>
+            {usuario?.cancelacionesTardias || 0}
+          </Text>
+          <Text style={[styles.etiquetaMetrica, { color: colores.textoMuted }]}>
+            Cancelaciones tardías
+          </Text>
+        </View>
+        <View style={[styles.separadorMetrica, { backgroundColor: colores.borde }]} />
+        <View style={styles.itemMetrica}>
+          <Text style={[styles.valorMetrica, { color: colores.texto }]}>
+            {usuario?.ausencias || 0}
+          </Text>
+          <Text style={[styles.etiquetaMetrica, { color: colores.textoMuted }]}>
+            Ausencias
           </Text>
         </View>
       </View>
 
-      {/* Sección Preferencias y Sistema de Temas */}
+      {/* Preferencias */}
       <View style={styles.seccion}>
         <Text style={[styles.tituloSeccion, { color: colores.textoSecundario }]}>PREFERENCIAS</Text>
 
@@ -141,9 +160,9 @@ export default function PantallaPerfil() {
         )}
       </View>
 
-      {/* Sección Institucional y Enlaces Externos */}
+      {/* Información Municipal */}
       <View style={styles.seccion}>
-        <Text style={[styles.tituloSeccion, { color: colores.textoSecundario }]}>INFORMACIÓN INSTITUCIONAL</Text>
+        <Text style={[styles.tituloSeccion, { color: colores.textoSecundario }]}>INFORMACIÓN MUNICIPAL</Text>
 
         <Pressable
           style={({ pressed }) => [
@@ -154,23 +173,23 @@ export default function PantallaPerfil() {
         >
           <View style={styles.filaOpcionIzq}>
             <Icono nombre="globe-outline" size={20} color={Colores.primarioClaro} />
-            <Text style={[styles.textoOpcion, { color: colores.texto }]}>Portal Municipal de Deportes</Text>
+            <Text style={[styles.textoOpcion, { color: colores.texto }]}>Sitio Municipal de Deportes</Text>
           </View>
           <Icono nombre="open-outline" size={18} color={colores.textoMuted} />
         </Pressable>
 
-        <View style={[styles.tarjetaIoT, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-          <Icono nombre="hardware-chip-outline" size={20} color={Colores.acento} />
+        <View style={[styles.tarjetaInfo, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <Icono nombre="business-outline" size={20} color={Colores.primarioClaro} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[styles.tituloIoT, { color: colores.texto }]}>Integración IoT (Mark Weiser)</Text>
-            <Text style={[styles.descIoT, { color: colores.textoMuted }]}>
-              El sistema conecta con la telemetría del predio para encender reflectores nocturnos automáticamente según las reservas activas.
+            <Text style={[styles.tituloInfo, { color: colores.texto }]}>Dirección de Deportes de Villaguay</Text>
+            <Text style={[styles.descInfo, { color: colores.textoMuted }]}>
+              Complejo Polideportivo Municipal y Parque Berduc. Consultas y atención administrativa de 8 a 20 hs.
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Botón Cerrar Sesión */}
+      {/* Botón Salir */}
       <Pressable
         style={({ pressed }) => [
           styles.botonSalir,
@@ -197,7 +216,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     gap: 16,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   avatarContenedor: {
     position: 'relative',
@@ -228,7 +247,7 @@ const styles = StyleSheet.create({
   },
   infoUsuario: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   nombre: {
     fontSize: 17,
@@ -237,10 +256,37 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 12,
   },
+  filaRol: {
+    marginTop: 2,
+  },
   rol: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  tarjetaMetricas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 20,
+  },
+  itemMetrica: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  separadorMetrica: {
+    width: 1,
+    height: '70%',
+  },
+  valorMetrica: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  etiquetaMetrica: {
+    fontSize: 11,
+    textAlign: 'center',
   },
   seccion: {
     marginBottom: 20,
@@ -269,7 +315,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  tarjetaIoT: {
+  tarjetaInfo: {
     flexDirection: 'row',
     padding: 14,
     borderRadius: 12,
@@ -277,11 +323,11 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
-  tituloIoT: {
+  tituloInfo: {
     fontSize: 13,
     fontWeight: '700',
   },
-  descIoT: {
+  descInfo: {
     fontSize: 11,
     lineHeight: 16,
   },
@@ -293,7 +339,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
     marginBottom: 40,
   },
   textoBotonSalir: {

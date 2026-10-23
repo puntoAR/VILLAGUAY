@@ -1,10 +1,9 @@
 // src/servicios/notificaciones.ts
-// Notificaciones locales y canal para Android
+// Notificaciones locales y recordatorios
 
 import { Platform, LogBox } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
-// Silenciar advertencia informativa de Expo Go en SDK 53
 LogBox.ignoreLogs([
   '[expo-notifications]',
   'Push notifications (remote notifications) are unavailable in Expo Go',
@@ -12,7 +11,6 @@ LogBox.ignoreLogs([
   'ExpoTopicSubscriptionModule',
 ]);
 
-// Interceptar advertencia de consola informativa de expo-notifications en Expo Go
 const advertenciaOriginal = console.warn;
 console.warn = (...args: any[]) => {
   if (typeof args[0] === 'string' && args[0].includes('[expo-notifications]')) {
@@ -21,19 +19,13 @@ console.warn = (...args: any[]) => {
   advertenciaOriginal(...args);
 };
 
-const esExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
-// Importación defensiva compatible con Expo Go (donde FCM topics no están vinculados) y APK Standalone (EAS Build)
 let Notifications: any = null;
 if (Platform.OS !== 'web') {
   try {
     Notifications = require('expo-notifications');
-  } catch (error) {
-    // Silenciar error de módulo nativo en Expo Go
-  }
+  } catch {}
 }
 
-// 1. Configurar comportamiento en primer plano si el módulo está disponible
 if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
   try {
     Notifications.setNotificationHandler({
@@ -49,7 +41,6 @@ if (Notifications && typeof Notifications.setNotificationHandler === 'function')
 }
 
 export const NotificacionesServicio = {
-  // Canal de notificaciones para Android
   async configurarCanalAndroid(): Promise<void> {
     if (Platform.OS === 'android' && Notifications && typeof Notifications.setNotificationChannelAsync === 'function') {
       try {
@@ -64,7 +55,6 @@ export const NotificacionesServicio = {
     }
   },
 
-  // 3. Solicitar permisos en tiempo de ejecución
   async solicitarPermisos(): Promise<boolean> {
     if (Platform.OS === 'web' || !Notifications) return false;
     try {
@@ -80,12 +70,10 @@ export const NotificacionesServicio = {
     }
   },
 
-  // 4. Programar recordatorio local para el turno (2 horas antes o inmediato en 5s si es próximo)
   async programarRecordatorio(nombreEspacio: string, inicio: string): Promise<string | null> {
     if (Platform.OS === 'web') return null;
 
     if (!Notifications) {
-      console.log(`[Notificaciones - Expo Go] Recordatorio simulado: Turno en ${nombreEspacio} a las ${inicio} hs.`);
       return `notif-mock-${Date.now()}`;
     }
 
@@ -97,19 +85,46 @@ export const NotificacionesServicio = {
 
       return await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🏆 Deportes Villaguay — Recordatorio',
-          body: `Tu turno en ${nombreEspacio} comienza hoy a las ${inicio} hs. ¡Llevá tu código QR listo en el celular!`,
+          title: 'Deportes Villaguay',
+          body: `Tu turno en ${nombreEspacio} comienza hoy a las ${inicio} hs. ¡Mostrá el código QR al ingresar!`,
           data: { inicio },
           sound: 'default',
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 5, // Demostración inmediata a los 5 segundos
+          seconds: 5,
         },
       });
-    } catch (e) {
-      console.warn('[Notificaciones] Error al programar:', e);
+    } catch {
       return null;
     }
-  }
+  },
+
+  async programarRecordatorioTurno(_reservaId: string, nombreEspacio: string, _fecha: string, inicio: string): Promise<string | null> {
+    return await this.programarRecordatorio(nombreEspacio, inicio);
+  },
+
+  async avisarSuspension(nombreEspacio: string, motivo: string): Promise<string | null> {
+    if (Platform.OS === 'web' || !Notifications) return null;
+    try {
+      const concedido = await this.solicitarPermisos();
+      if (!concedido) return null;
+
+      await this.configurarCanalAndroid();
+
+      return await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Cancha Suspendida por Clima / Mantenimiento',
+          body: `Atención: ${nombreEspacio} fue suspendida. Motivo: ${motivo}`,
+          sound: 'default',
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 1,
+        },
+      });
+    } catch {
+      return null;
+    }
+  },
 };

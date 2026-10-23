@@ -1,69 +1,97 @@
 // src/app/escaner.tsx
-// Lector de códigos QR con cámara
+// Escáner de código QR para control de acceso
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, TextInput, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useTema } from '../contexto/ThemeContext';
 import { Icono } from '../componentes/Icono';
 import { Colores } from '../constantes/tema';
 import { Haptica } from '../servicios/haptica';
-import { BDService } from '../basedatos/sqlite';
+import { ReservasServicio } from '../servicios/reservas';
+import { esError } from '../servicios/api';
 
 export default function PantallaEscanerQR() {
   const { colores } = useTema();
   const router = useRouter();
 
-  // Gestión de permisos en tiempo de ejecución (undetermined, granted, denied)
   const [permiso, solicitarPermiso] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState<boolean>(false);
+  const [codigoManual, setCodigoManual] = useState<string>('');
 
-  if (!permiso) {
-    return <View style={{ flex: 1, backgroundColor: colores.fondo }} />;
-  }
-
-  if (!permiso.granted) {
-    return (
-      <View style={[styles.contenedorCentrado, { backgroundColor: colores.fondo }]}>
-        <Icono nombre="camera-outline" size={54} color={colores.textoMuted} />
-        <Text style={[styles.tituloPermiso, { color: colores.texto }]}>Permiso de Cámara Requerido</Text>
-        <Text style={[styles.descPermiso, { color: colores.textoSecundario }]}>
-          Se necesita acceso a la cámara para escanear el código QR del turno deportivo en la puerta.
-        </Text>
-        <Pressable
-          style={[styles.botonPermiso, { backgroundColor: Colores.primarioClaro }]}
-          onPress={solicitarPermiso}
-        >
-          <Text style={styles.textoBotonPermiso}>Conceder Permiso</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  const manejarCodigoLeido = ({ data }: { data: string }) => {
-    if (escaneado || !data) return;
+  const procesarCodigo = async (codigo: string) => {
+    if (escaneado || !codigo.trim()) return;
     setEscaneado(true);
 
-    // Validación sincrónica en SQLite
-    const resultado = BDService.validarIngresoQrSync(data.trim());
+    const resp = await ReservasServicio.validarIngresoQr(codigo.trim());
 
-    if (resultado.exito) {
-      Haptica.exito();
+    if (!esError(resp)) {
+      await Haptica.exito();
       Alert.alert(
         'ACCESO AUTORIZADO ✅',
-        resultado.mensaje,
-        [{ text: 'Escanear Siguiente', onPress: () => setEscaneado(false) }]
+        `${resp.datos.mensaje}\nReserva: ${resp.datos.reserva.id}`,
+        [{ text: 'Aceptar', onPress: () => setEscaneado(false) }]
       );
     } else {
-      Haptica.error();
+      await Haptica.error();
       Alert.alert(
         'ACCESO DENEGADO ❌',
-        resultado.mensaje,
+        resp.error.mensaje,
         [{ text: 'Reintentar', onPress: () => setEscaneado(false) }]
       );
     }
   };
+
+  const manejarCodigoLeido = ({ data }: { data: string }) => {
+    procesarCodigo(data);
+  };
+
+  // En navegadores web donde CameraView no tiene soporte de cámara trasera nativa
+  if (Platform.OS === 'web' || !permiso?.granted) {
+    return (
+      <View style={[styles.contenedorWeb, { backgroundColor: colores.fondo }]}>
+        <Icono nombre="qr-code-outline" size={60} color={Colores.primarioClaro} />
+        <Text style={[styles.tituloWeb, { color: colores.texto }]}>Control de Acceso QR</Text>
+        <Text style={[styles.descWeb, { color: colores.textoSecundario }]}>
+          {Platform.OS === 'web'
+            ? 'En navegador de escritorio podés validar ingresando el código manualmente:'
+            : 'Se requiere permiso de cámara para escanear en tiempo real:'}
+        </Text>
+
+        {!permiso?.granted && Platform.OS !== 'web' && (
+          <Pressable
+            style={[styles.botonPermiso, { backgroundColor: Colores.primarioClaro }]}
+            onPress={solicitarPermiso}
+          >
+            <Text style={styles.textoBotonPermiso}>Conceder Permiso de Cámara</Text>
+          </Pressable>
+        )}
+
+        {/* Validación manual (útil para pruebas en PC o si la cámara no enfoca) */}
+        <View style={styles.cajaManual}>
+          <TextInput
+            style={[styles.inputManual, { backgroundColor: colores.tarjeta, color: colores.texto, borderColor: colores.borde }]}
+            placeholder="Ej: VGY-01-esp-01-1900"
+            placeholderTextColor={colores.textoMuted}
+            value={codigoManual}
+            onChangeText={setCodigoManual}
+            autoCapitalize="characters"
+          />
+          <Pressable
+            style={[styles.botonValidarManual, { backgroundColor: Colores.primarioClaro }]}
+            onPress={() => procesarCodigo(codigoManual)}
+          >
+            <Text style={styles.textoBotonManual}>Validar Acceso</Text>
+          </Pressable>
+        </View>
+
+        <Pressable style={styles.botonVolver} onPress={() => router.back()}>
+          <Text style={[styles.textoVolver, { color: colores.textoSecundario }]}>Volver</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.contenedor}>
@@ -76,11 +104,11 @@ export default function PantallaEscanerQR() {
         onBarcodeScanned={escaneado ? undefined : manejarCodigoLeido}
       />
 
-      {/* Overlay de la mira del escáner */}
       <View style={styles.overlay}>
         <Text style={styles.textoInstruccion}>
-          Apuntá la cámara hacia el código QR del turno
+          Apuntá al código QR del usuario para autorizar el ingreso
         </Text>
+
         <View style={styles.marcoMira}>
           <View style={[styles.esquina, styles.esquinaTL]} />
           <View style={[styles.esquina, styles.esquinaTR]} />
@@ -88,10 +116,7 @@ export default function PantallaEscanerQR() {
           <View style={[styles.esquina, styles.esquinaBR]} />
         </View>
 
-        <Pressable
-          style={styles.botonCerrar}
-          onPress={() => router.back()}
-        >
+        <Pressable style={styles.botonCerrar} onPress={() => router.back()}>
           <Text style={styles.textoBotonCerrar}>Cerrar Escáner</Text>
         </Pressable>
       </View>
@@ -104,34 +129,67 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  contenedorCentrado: {
+  contenedorWeb: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
     gap: 12,
   },
-  tituloPermiso: {
-    fontSize: 18,
+  tituloWeb: {
+    fontSize: 20,
     fontWeight: '800',
-    textAlign: 'center',
+    marginTop: 8,
   },
-  descPermiso: {
+  descWeb: {
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-    maxWidth: 280,
+    maxWidth: 320,
   },
   botonPermiso: {
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 10,
-    marginTop: 8,
+    marginTop: 6,
   },
   textoBotonPermiso: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cajaManual: {
+    width: '100%',
+    maxWidth: 340,
+    gap: 10,
+    marginTop: 14,
+  },
+  inputManual: {
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  botonValidarManual: {
+    height: 46,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textoBotonManual: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  botonVolver: {
+    marginTop: 20,
+    padding: 10,
+  },
+  textoVolver: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   overlay: {
     flex: 1,
@@ -149,6 +207,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
+    textAlign: 'center',
   },
   marcoMira: {
     width: 240,

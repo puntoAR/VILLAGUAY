@@ -1,11 +1,10 @@
 // src/app/espacio/[id].tsx
-// Detalle de espacio deportivo y reserva de turnos
+// Detalle de cancha y grilla horaria de disponibilidad
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTema } from '../../contexto/ThemeContext';
 import { useAuth } from '../../contexto/AuthContext';
 import { Icono } from '../../componentes/Icono';
@@ -13,88 +12,141 @@ import { Colores } from '../../constantes/tema';
 import { ReproductorVideo } from '../../componentes/ReproductorVideo';
 import { EstadoCarga } from '../../componentes/EstadoCarga';
 import { Haptica } from '../../servicios/haptica';
-import { ApiCatedraServicio } from '../../servicios/api';
-import { NotificacionesServicio } from '../../servicios/notificaciones';
-import { BDService } from '../../basedatos/sqlite';
-import { Turno } from '../../tipos';
+import { EspaciosServicio } from '../../servicios/espacios';
+import { TurnosServicio } from '../../servicios/turnos';
+import { ReservasServicio } from '../../servicios/reservas';
+import { esError } from '../../servicios/api';
+import { Espacio, Turno } from '../../tipos';
 
 export default function PantallaDetalleCancha() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colores } = useTema();
   const { usuario } = useAuth();
-  const queryClient = useQueryClient();
 
-  const fechaHoy = new Date().toISOString().split('T')[0];
+  const [espacio, setEspacio] = useState<Espacio | null>(null);
+  const [diasDisponibles] = useState(() => TurnosServicio.obtenerProximos7Dias());
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(
+    () => TurnosServicio.obtenerProximos7Dias()[0].fecha
+  );
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [cargandoEspacio, setCargandoEspacio] = useState<boolean>(true);
+  const [cargandoTurnos, setCargandoTurnos] = useState<boolean>(false);
 
-  // 1. Obtener cancha sincrónicamente de SQLite
-  const espacio = BDService.obtenerEspacioPorIdSync(id || '');
-
-  // 2. Consulta de turnos con TanStack Query
-  const { data: turnos = [], isLoading } = useQuery({
-    queryKey: ['turnos', id, fechaHoy],
-    queryFn: () => ApiCatedraServicio.obtenerTurnos(id || '', fechaHoy),
-    enabled: Boolean(id),
-  });
-
-  // Estado del Modal de Reserva
+  // Modal de reserva
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null);
   const [conLuz, setConLuz] = useState<boolean>(false);
+  const [cantidadPersonas, setCantidadPersonas] = useState<number>(10);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [reservando, setReservando] = useState<boolean>(false);
 
   const CANON_LUZ = 2500;
-  const precioBase = espacio?.precioPorHora || 0;
-  const precioTotal = precioBase + (conLuz ? CANON_LUZ : 0);
 
-  // 3. Mutación para crear la reserva
-  const mutacionReservar = useMutation({
-    mutationFn: () =>
-      ApiCatedraServicio.crearReserva({
-        espacioId: espacio!.id,
-        nombreEspacio: espacio!.nombre,
-        turnoId: turnoSeleccionado!.id,
-        usuarioId: usuario?.id || 'usr-jugador-1',
-        cantidadPersonas: 10,
-        conLuz,
-        montoTotal: precioTotal,
-      }),
-    onSuccess: async () => {
-      setModalVisible(false);
-      Haptica.exito();
+  // Cargar información del espacio
+  useEffect(() => {
+    let montado = true;
+    const cargar = async () => {
+      if (!id) return;
+      setCargandoEspacio(true);
+      const resp = await EspaciosServicio.obtenerEspacioPorId(id);
+      if (montado) {
+        if (!esError(resp)) {
+          setEspacio(resp.datos);
+          setCantidadPersonas(resp.datos.capacidad || 10);
+        }
+        setCargandoEspacio(false);
+      }
+    };
+    cargar();
+    return () => {
+      montado = false;
+    };
+  }, [id]);
 
-      // Programar recordatorio local con expo-notifications
-      await NotificacionesServicio.programarRecordatorio(espacio!.nombre, turnoSeleccionado!.inicio);
+  // Cargar grilla horaria para la fecha seleccionada
+  const cargarGrilla = useCallback(async () => {
+    if (!id || !fechaSeleccionada) return;
+    setCargandoTurnos(true);
+    const resp = await TurnosServicio.obtenerGrillaDia(id, fechaSeleccionada);
+    if (!esError(resp)) {
+      setTurnos(resp.datos);
+    }
+    setCargandoTurnos(false);
+  }, [id, fechaSeleccionada]);
 
-      // Invalidar caché
-      queryClient.invalidateQueries({ queryKey: ['turnos'] });
-      queryClient.invalidateQueries({ queryKey: ['mis-reservas'] });
+  useEffect(() => {
+    cargarGrilla();
+  }, [cargarGrilla]);
 
-      Alert.alert(
-        '¡Turno Reservado! 🏆',
-        `Tu turno en ${espacio!.nombre} para las ${turnoSeleccionado!.inicio} hs fue confirmado. Podés consultar tu código QR en la pestaña "Mis Turnos".`,
-        [{ text: 'Ver Mis Turnos', onPress: () => router.push('/(tabs)/turnos') }]
-      );
-    },
-    onError: () => {
-      Haptica.error();
-      Alert.alert('Error', 'No se pudo completar la reserva.');
-    },
-  });
-
-  if (!espacio) {
-    return <EstadoCarga mensaje="Cancha no encontrada..." />;
+  if (cargandoEspacio || !espacio) {
+    return <EstadoCarga mensaje="Cargando detalles de la cancha..." />;
   }
 
+  const precioTotal = (espacio.precioPorHora || 0) + (conLuz ? CANON_LUZ : 0);
+
   const abrirModalReserva = (t: Turno) => {
-    if (t.estado !== 'libre') return;
-    Haptica.seleccion();
+    if (t.estado !== 'libre') {
+      if (t.motivoBloqueo) {
+        Alert.alert('Turno no disponible', t.motivoBloqueo);
+      }
+      return;
+    }
+    Haptica.seleccionSuave();
     setTurnoSeleccionado(t);
     setModalVisible(true);
   };
 
+  const confirmarReserva = async () => {
+    if (!turnoSeleccionado) return;
+
+    try {
+      setReservando(true);
+      const resp = await ReservasServicio.crearReserva({
+        espacioId: espacio.id,
+        nombreEspacio: espacio.nombre,
+        turnoId: turnoSeleccionado.id,
+        usuarioId: usuario?.id || 'usr-jugador-1',
+        cantidadPersonas,
+        fecha: fechaSeleccionada,
+        inicio: turnoSeleccionado.inicio,
+        conLuz,
+        montoTotal: precioTotal,
+        nombreUsuario: usuario?.nombre || 'Usuario',
+        telefonoUsuario: usuario?.telefono || '',
+      });
+
+      if (esError(resp)) {
+        await Haptica.error();
+        Alert.alert('No se pudo reservar', resp.error.mensaje);
+        return;
+      }
+
+      await Haptica.confirmacion();
+      setModalVisible(false);
+      await cargarGrilla();
+
+      Alert.alert(
+        '¡Reserva Confirmada!',
+        `Tu turno en ${espacio.nombre} para las ${turnoSeleccionado.inicio} hs quedó confirmado. Mostrá el código QR al ingresar.`,
+        [
+          {
+            text: 'Ver Mis Turnos',
+            onPress: () => router.push('/(tabs)/turnos'),
+          },
+          { text: 'Aceptar', style: 'cancel' },
+        ]
+      );
+    } catch {
+      await Haptica.error();
+      Alert.alert('Error', 'Ocurrió un problema al procesar la reserva.');
+    } finally {
+      setReservando(false);
+    }
+  };
+
   return (
     <ScrollView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      {/* Imagen Principal */}
+      {/* Galería de imágenes */}
       <Image
         source={{ uri: espacio.imagenes[0] }}
         style={styles.imagenPrincipal}
@@ -112,56 +164,133 @@ export default function PantallaDetalleCancha() {
           </Text>
         </View>
 
-        {/* Video con expo-video */}
+        {/* Video corto del recorrido */}
         <ReproductorVideo videoUrl={espacio.videoUrl} />
 
-        {/* Reglas de Uso */}
+        {/* Reglamento */}
         <View style={[styles.tarjetaReglas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
-          <Text style={[styles.tituloReglas, { color: colores.texto }]}>Reglamento del Complejo</Text>
+          <Text style={[styles.tituloReglas, { color: colores.texto }]}>Reglamento del Espacio</Text>
           <Text style={[styles.textoReglas, { color: colores.textoSecundario }]}>{espacio.reglas}</Text>
         </View>
 
-        {/* Grilla de Turnos para Hoy */}
-        <View style={styles.seccionTurnos}>
+        {/* Selector de los próximos 7 días */}
+        <View style={styles.seccionDias}>
+          <Text style={[styles.tituloSeccion, { color: colores.texto }]}>Elegir Fecha (Próximos 7 días)</Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={diasDisponibles}
+            keyExtractor={item => item.fecha}
+            contentContainerStyle={styles.listaDias}
+            renderItem={({ item }) => {
+              const seleccionado = fechaSeleccionada === item.fecha;
+              return (
+                <Pressable
+                  style={[
+                    styles.botonDia,
+                    {
+                      backgroundColor: seleccionado ? Colores.primarioClaro : colores.tarjeta,
+                      borderColor: seleccionado ? Colores.primarioClaro : colores.borde,
+                    },
+                  ]}
+                  onPress={() => setFechaSeleccionada(item.fecha)}
+                >
+                  <Text
+                    style={[
+                      styles.textoDiaEtiqueta,
+                      { color: seleccionado ? '#FFFFFF' : colores.textoSecundario },
+                    ]}
+                  >
+                    {item.etiqueta}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.textoDiaMes,
+                      { color: seleccionado ? '#FFFFFF' : colores.texto },
+                    ]}
+                  >
+                    {item.diaMes}
+                  </Text>
+                </Pressable>
+              );
+            }}
+          />
+        </View>
+
+        {/* Grilla horaria de 8:00 a 24:00 */}
+        <View style={styles.seccionGrilla}>
           <Text style={[styles.tituloSeccion, { color: colores.texto }]}>
-            Turnos Disponibles para Hoy ({fechaHoy})
+            Grilla Horaria (8:00 a 24:00 hs)
           </Text>
 
-          {isLoading ? (
-            <EstadoCarga mensaje="Consultando horarios..." />
+          {cargandoTurnos ? (
+            <ActivityIndicator size="small" color={Colores.primarioClaro} style={{ marginVertical: 20 }} />
           ) : (
             <View style={styles.grillaHorarios}>
               {turnos.map(t => {
                 const esLibre = t.estado === 'libre';
+                const esPasado = t.motivoBloqueo === 'Horario transcurrido';
+                const esMantenimiento = t.estado === 'mantenimiento';
+                const esFijo = t.estado === 'fijo';
+
+                let colorFondo = colores.tarjeta;
+                let colorBorde = colores.borde;
+                let textoEstado = 'LIBRE';
+                let colorTextoEstado = colores.libreTexto;
+
+                if (esPasado) {
+                  textoEstado = 'PASADO';
+                  colorFondo = 'rgba(150, 150, 150, 0.1)';
+                  colorTextoEstado = colores.textoMuted;
+                } else if (esMantenimiento) {
+                  textoEstado = 'BLOQUEADO';
+                  colorFondo = '#FEF3C7';
+                  colorBorde = '#F59E0B';
+                  colorTextoEstado = '#B45309';
+                } else if (esFijo) {
+                  textoEstado = 'FIJO';
+                  colorFondo = '#E0F2FE';
+                  colorBorde = '#0284C7';
+                  colorTextoEstado = '#0369A1';
+                } else if (!esLibre) {
+                  textoEstado = 'OCUPADO';
+                  colorFondo = '#FEE2E2';
+                  colorBorde = '#EF4444';
+                  colorTextoEstado = '#B91C1C';
+                } else {
+                  colorBorde = Colores.primarioClaro;
+                  colorTextoEstado = Colores.primarioClaro;
+                }
+
                 return (
                   <Pressable
                     key={t.id}
                     style={({ pressed }) => [
                       styles.botonTurno,
                       {
-                        backgroundColor: esLibre ? colores.tarjeta : colores.inputFondo,
-                        borderColor: esLibre ? Colores.primarioClaro : colores.borde,
-                        opacity: !esLibre ? 0.6 : pressed ? 0.8 : 1,
+                        backgroundColor: colorFondo,
+                        borderColor: colorBorde,
+                        opacity: !esLibre || esPasado ? 0.7 : pressed ? 0.8 : 1,
                       },
                     ]}
-                    disabled={!esLibre}
+                    disabled={!esLibre || esPasado}
                     onPress={() => abrirModalReserva(t)}
                   >
                     <Text
                       style={[
                         styles.horarioTexto,
-                        { color: esLibre ? colores.texto : colores.textoMuted },
+                        { color: esLibre && !esPasado ? colores.texto : colores.textoMuted },
                       ]}
                     >
-                      {t.inicio} hs
+                      {t.inicio}
                     </Text>
                     <Text
                       style={[
                         styles.estadoTurnoTexto,
-                        { color: esLibre ? Colores.primarioClaro : colores.textoMuted },
+                        { color: colorTextoEstado },
                       ]}
                     >
-                      {esLibre ? 'LIBRE' : 'OCUPADO'}
+                      {textoEstado}
                     </Text>
                   </Pressable>
                 );
@@ -171,57 +300,85 @@ export default function PantallaDetalleCancha() {
         </View>
       </View>
 
-      {/* Modal de Confirmación de Reserva */}
+      {/* Modal de confirmación de reserva */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.overlayModal}>
           <View style={[styles.contenidoModal, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
             <Text style={[styles.tituloModal, { color: colores.texto }]}>Confirmar Reserva</Text>
             <Text style={[styles.detalleModal, { color: colores.textoSecundario }]}>
-              {espacio.nombre} a las {turnoSeleccionado?.inicio} hs
+              {espacio.nombre} • {fechaSeleccionada} a las {turnoSeleccionado?.inicio} hs
             </Text>
 
-            {/* Checkbox de Iluminación Nocturna / IoT */}
-            <Pressable
-              style={[styles.opcionLuz, { backgroundColor: colores.inputFondo, borderColor: colores.borde }]}
-              onPress={() => setConLuz(!conLuz)}
-            >
-              <Icono
-                nombre={conLuz ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={conLuz ? Colores.primarioClaro : colores.textoMuted}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.textoOpcionLuz, { color: colores.texto }]}>
-                  💡 Solicitar Iluminación Nocturna
-                </Text>
-                <Text style={[styles.subtextoOpcionLuz, { color: colores.textoMuted }]}>
-                  Actuador IoT: Los reflectores del predio se activarán automáticamente durante tu turno (+${CANON_LUZ}).
-                </Text>
+            {/* Cantidad de personas */}
+            <View style={styles.filaControl}>
+              <Text style={[styles.etiquetaControl, { color: colores.texto }]}>Jugadores:</Text>
+              <View style={styles.contadorContenedor}>
+                <Pressable
+                  style={[styles.botonContador, { borderColor: colores.borde }]}
+                  onPress={() => setCantidadPersonas(Math.max(2, cantidadPersonas - 1))}
+                >
+                  <Text style={[styles.textoContador, { color: colores.texto }]}>-</Text>
+                </Pressable>
+                <Text style={[styles.numeroPersonas, { color: colores.texto }]}>{cantidadPersonas}</Text>
+                <Pressable
+                  style={[styles.botonContador, { borderColor: colores.borde }]}
+                  onPress={() => setCantidadPersonas(Math.min(espacio.capacidad + 4, cantidadPersonas + 1))}
+                >
+                  <Text style={[styles.textoContador, { color: colores.texto }]}>+</Text>
+                </Pressable>
               </View>
-            </Pressable>
+            </View>
+
+            {/* Checkbox de luz nocturna si el espacio tiene iluminación */}
+            {espacio.iluminacion && (
+              <Pressable
+                style={[styles.opcionLuz, { backgroundColor: colores.inputFondo, borderColor: colores.borde }]}
+                onPress={() => setConLuz(!conLuz)}
+              >
+                <Icono
+                  nombre={conLuz ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={conLuz ? Colores.primarioClaro : colores.textoMuted}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.textoOpcionLuz, { color: colores.texto }]}>
+                    Solicitar Iluminación Nocturna (+${CANON_LUZ})
+                  </Text>
+                  <Text style={[styles.subtextoOpcionLuz, { color: colores.textoMuted }]}>
+                    Incluye el encendido de reflectores durante el horario del turno.
+                  </Text>
+                </View>
+              </Pressable>
+            )}
 
             {/* Total */}
             <View style={styles.filaTotal}>
-              <Text style={[styles.etiquetaTotal, { color: colores.textoSecundario }]}>Monto Total:</Text>
+              <Text style={[styles.etiquetaTotal, { color: colores.textoSecundario }]}>Total a abonar:</Text>
               <Text style={[styles.montoTotal, { color: Colores.primarioClaro }]}>
                 ${precioTotal.toLocaleString('es-AR')}
               </Text>
             </View>
 
-            {/* Botones del Modal */}
+            {/* Botones de acción */}
             <View style={styles.filaBotonesModal}>
               <Pressable
                 style={[styles.botonModal, styles.botonCancelarModal]}
                 onPress={() => setModalVisible(false)}
+                disabled={reservando}
               >
                 <Text style={styles.textoBotonCancelarModal}>Volver</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.botonModal, styles.botonConfirmarModal, { backgroundColor: Colores.primarioClaro }]}
-                onPress={() => mutacionReservar.mutate()}
+                style={[styles.botonModal, { backgroundColor: Colores.primarioClaro, opacity: reservando ? 0.7 : 1 }]}
+                onPress={confirmarReserva}
+                disabled={reservando}
               >
-                <Text style={styles.textoBotonConfirmarModal}>Confirmar Turno</Text>
+                {reservando ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.textoBotonConfirmarModal}>Confirmar Reserva</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -272,33 +429,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  seccionTurnos: {
-    gap: 12,
+  seccionDias: {
+    gap: 8,
   },
   tituloSeccion: {
     fontSize: 15,
     fontWeight: '700',
   },
+  listaDias: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  botonDia: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  textoDiaEtiqueta: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  textoDiaMes: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  seccionGrilla: {
+    gap: 10,
+  },
   grillaHorarios: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   botonTurno: {
-    width: '31%',
-    borderRadius: 10,
-    borderWidth: 1.5,
-    paddingVertical: 12,
+    width: '23%',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 10,
     alignItems: 'center',
-    gap: 3,
+    gap: 2,
   },
   horarioTexto: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   estadoTurnoTexto: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '800',
   },
   overlayModal: {
     flex: 1,
@@ -317,12 +498,44 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   detalleModal: {
+    fontSize: 13,
+  },
+  filaControl: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  etiquetaControl: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  contadorContenedor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  botonContador: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textoContador: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  numeroPersonas: {
+    fontSize: 15,
+    fontWeight: '800',
+    minWidth: 20,
+    textAlign: 'center',
   },
   opcionLuz: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
@@ -334,7 +547,6 @@ const styles = StyleSheet.create({
   subtextoOpcionLuz: {
     fontSize: 11,
     marginTop: 2,
-    lineHeight: 15,
   },
   filaTotal: {
     flexDirection: 'row',
@@ -368,7 +580,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  botonConfirmarModal: {},
   textoBotonConfirmarModal: {
     color: '#FFFFFF',
     fontSize: 14,

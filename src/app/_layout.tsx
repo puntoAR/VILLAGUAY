@@ -1,20 +1,19 @@
 // src/app/_layout.tsx
-// Enrutador principal y proveedores globales
+// Enrutador principal y proveedores de la aplicación
 
 import React, { useEffect } from 'react';
-import { View, StyleSheet, LogBox, ActivityIndicator } from 'react-native';
+import { View, LogBox, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, useTema } from '../contexto/ThemeContext';
 import { AuthProvider, useAuth } from '../contexto/AuthContext';
 import { RedProvider } from '../contexto/RedContext';
 import { BannerDesconexion } from '../componentes/BannerDesconexion';
 import { Colores } from '../constantes/tema';
-import { inicializarBaseDatosSync } from '../basedatos/sqlite';
+import { obtenerBD } from '../basedatos/sqlite';
 
-// Ignorar advertencias no críticas en emulador / Expo Go
+// Ignorar avisos no críticos de entorno
 LogBox.ignoreLogs([
   '[expo-notifications]',
   'Push notifications (remote notifications) are unavailable in Expo Go',
@@ -22,16 +21,6 @@ LogBox.ignoreLogs([
   'ExpoTopicSubscriptionModule',
   'expo-notifications:',
 ]);
-
-// Instanciar cliente global de TanStack Query
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 3, // 3 minutos de caché fresca
-      retry: 1,
-    },
-  },
-});
 
 function NavegacionPrincipal() {
   const { esOscuro, colores } = useTema();
@@ -46,10 +35,8 @@ function NavegacionPrincipal() {
     const enLogin = segments[0] === 'login';
 
     if (!usuario && !enLogin) {
-      // Si no hay sesión activa, obligar ingreso por Login
       router.replace('/login');
     } else if (usuario && enLogin) {
-      // Si ya está autenticado y está en Login, navegar al catálogo
       router.replace('/(tabs)');
     }
   }, [usuario, cargando, segments]);
@@ -111,24 +98,22 @@ function NavegacionPrincipal() {
 }
 
 export default function RootLayout() {
-  // Inicialización sincrónica inmediata de SQLite antes de montar las pantallas
-  try {
-    inicializarBaseDatosSync();
-  } catch (e) {
-    console.warn('[SQLite] Error inicializando base de datos:', e);
-  }
+  useEffect(() => {
+    // Inicializar base de datos de manera asíncrona y segura
+    obtenerBD().catch(err => {
+      console.warn('[SQLite] Inicialización:', err);
+    });
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <RedProvider>
-            <AuthProvider>
-              <NavegacionPrincipal />
-            </AuthProvider>
-          </RedProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <RedProvider>
+          <AuthProvider>
+            <NavegacionPrincipal />
+          </AuthProvider>
+        </RedProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

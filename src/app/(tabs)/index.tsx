@@ -1,59 +1,91 @@
 // src/app/(tabs)/index.tsx
 // Catálogo principal de espacios deportivos
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TextInput, StyleSheet, Pressable, RefreshControl } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useTema } from '../../contexto/ThemeContext';
 import { TarjetaEspacio } from '../../componentes/TarjetaEspacio';
 import { EstadoCarga } from '../../componentes/EstadoCarga';
 import { EstadoVacio } from '../../componentes/EstadoVacio';
 import { Icono } from '../../componentes/Icono';
 import { Colores } from '../../constantes/tema';
-import { ApiCatedraServicio } from '../../servicios/api';
+import { EspaciosServicio } from '../../servicios/espacios';
+import { esError } from '../../servicios/api';
 import { useAcelerometroShake } from '../../servicios/sensores';
-import { BDService } from '../../basedatos/sqlite';
+import { Espacio, Deporte } from '../../tipos';
+
+const COMPLEJOS = ['Todos', 'Polideportivo Municipal', 'Parque Berduc'];
 
 export default function PantallaCanchas() {
   const { colores } = useTema();
 
+  const [espacios, setEspacios] = useState<Espacio[]>([]);
+  const [deportes, setDeportes] = useState<Deporte[]>([]);
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [refrescando, setRefrescando] = useState<boolean>(false);
+
   const [deporteFiltro, setDeporteFiltro] = useState<string>('todos');
+  const [complejoFiltro, setComplejoFiltro] = useState<string>('Todos');
   const [busqueda, setBusqueda] = useState<string>('');
 
-  // Consulta de espacios con caché
-  const {
-    data: espacios = [],
-    isLoading,
-    isRefetching,
-    refetch,
-  } = useQuery({
-    queryKey: ['espacios', deporteFiltro],
-    queryFn: () => ApiCatedraServicio.obtenerEspacios(deporteFiltro === 'todos' ? undefined : deporteFiltro),
-  });
+  const cargarDatos = useCallback(async () => {
+    try {
+      const respDeportes = await EspaciosServicio.obtenerDeportes();
+      if (!esError(respDeportes)) {
+        setDeportes(respDeportes.datos);
+      }
 
-  // Lista de deportes desde SQLite
-  const deportes = [{ id: 'todos', nombre: 'Todos' }, ...BDService.obtenerDeportesSync()];
+      const paramsFiltro: { deporteId?: string; complejo?: string } = {};
+      if (deporteFiltro !== 'todos') paramsFiltro.deporteId = deporteFiltro;
+      if (complejoFiltro !== 'Todos') paramsFiltro.complejo = complejoFiltro;
 
-  // Resetear filtros al agitar el dispositivo
+      const respEspacios = await EspaciosServicio.obtenerEspacios(paramsFiltro);
+      if (!esError(respEspacios)) {
+        setEspacios(respEspacios.datos);
+      }
+    } catch (err) {
+      console.warn('Error cargando canchas:', err);
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
+    }
+  }, [deporteFiltro, complejoFiltro]);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const manejarRefresco = () => {
+    setRefrescando(true);
+    cargarDatos();
+  };
+
+  // Resetear filtros al agitar el teléfono
   useAcelerometroShake(() => {
     setBusqueda('');
     setDeporteFiltro('todos');
+    setComplejoFiltro('Todos');
   });
 
-  const espaciosFiltrados = espacios.filter(e =>
-    e.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    e.complejo.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const listaDeportesPildoras = [{ id: 'todos', nombre: 'Todos' }, ...deportes];
+
+  const espaciosFiltrados = espacios.filter(e => {
+    const coincideTexto =
+      e.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      e.complejo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      e.superficie.toLowerCase().includes(busqueda.toLowerCase());
+    return coincideTexto;
+  });
 
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      {/* Barra de búsqueda */}
+      {/* Barra de búsqueda y filtros */}
       <View style={styles.cabecera}>
         <View style={[styles.buscador, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
           <Icono nombre="search-outline" size={18} color={colores.textoMuted} />
           <TextInput
             style={[styles.inputBusqueda, { color: colores.texto }]}
-            placeholder="Buscar por cancha o complejo..."
+            placeholder="Buscar por cancha, complejo o superficie..."
             placeholderTextColor={colores.textoMuted}
             value={busqueda}
             onChangeText={setBusqueda}
@@ -65,11 +97,41 @@ export default function PantallaCanchas() {
           )}
         </View>
 
+        {/* Selector de Complejo */}
+        <View style={styles.filaComplejos}>
+          {COMPLEJOS.map(comp => {
+            const activo = complejoFiltro === comp;
+            return (
+              <Pressable
+                key={comp}
+                style={[
+                  styles.botonComplejo,
+                  {
+                    backgroundColor: activo ? Colores.primarioClaro : colores.tarjeta,
+                    borderColor: activo ? Colores.primarioClaro : colores.borde,
+                  },
+                ]}
+                onPress={() => setComplejoFiltro(comp)}
+              >
+                <Text
+                  style={[
+                    styles.textoBotonComplejo,
+                    { color: activo ? '#FFFFFF' : colores.textoSecundario },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {comp}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Píldoras de deportes */}
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={deportes}
+          data={listaDeportesPildoras}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listaDeportes}
           renderItem={({ item }) => {
@@ -79,8 +141,8 @@ export default function PantallaCanchas() {
                 style={[
                   styles.pildoraDeporte,
                   {
-                    backgroundColor: activo ? Colores.primarioClaro : colores.tarjeta,
-                    borderColor: activo ? Colores.primarioClaro : colores.borde,
+                    backgroundColor: activo ? Colores.acento : colores.tarjeta,
+                    borderColor: activo ? Colores.acento : colores.borde,
                   },
                 ]}
                 onPress={() => setDeporteFiltro(item.id)}
@@ -88,7 +150,7 @@ export default function PantallaCanchas() {
                 <Text
                   style={[
                     styles.textoPildora,
-                    { color: activo ? '#FFFFFF' : colores.textoSecundario },
+                    { color: activo ? '#000000' : colores.textoSecundario },
                   ]}
                 >
                   {item.nombre}
@@ -98,18 +160,18 @@ export default function PantallaCanchas() {
           }}
         />
 
-        {/* Indicador pedagógico de sensores */}
+        {/* Tip sensor */}
         <View style={styles.avisoSensor}>
           <Icono nombre="phone-portrait-outline" size={12} color={colores.textoMuted} />
           <Text style={[styles.textoAvisoSensor, { color: colores.textoMuted }]}>
-            Tip sensor: ¡Sacudí el teléfono para reiniciar los filtros!
+            Tip: Sacudí el celular para limpiar los filtros
           </Text>
         </View>
       </View>
 
       {/* Lista de Canchas */}
-      {isLoading ? (
-        <EstadoCarga mensaje="Consultando espacios deportivos de Villaguay..." />
+      {cargando ? (
+        <EstadoCarga mensaje="Cargando canchas municipales..." />
       ) : (
         <FlatList
           data={espaciosFiltrados}
@@ -117,13 +179,17 @@ export default function PantallaCanchas() {
           contentContainerStyle={styles.listaCanchas}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colores.primarioClaro} />
+            <RefreshControl
+              refreshing={refrescando}
+              onRefresh={manejarRefresco}
+              tintColor={Colores.primarioClaro}
+            />
           }
           ListEmptyComponent={
             <EstadoVacio
               icono="search-outline"
               titulo="No se encontraron canchas"
-              subtitulo="Probá cambiando el deporte o la búsqueda de texto."
+              subtitulo="Probá ajustando el deporte, complejo o término de búsqueda."
             />
           }
           renderItem={({ item }) => <TarjetaEspacio espacio={item} />}
@@ -140,7 +206,7 @@ const styles = StyleSheet.create({
   cabecera: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    gap: 10,
+    gap: 8,
   },
   buscador: {
     flexDirection: 'row',
@@ -156,13 +222,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     height: '100%',
   },
+  filaComplejos: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  botonComplejo: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textoBotonComplejo: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   listaDeportes: {
     gap: 8,
     paddingVertical: 2,
   },
   pildoraDeporte: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -175,7 +258,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingBottom: 4,
+    paddingBottom: 2,
   },
   textoAvisoSensor: {
     fontSize: 11,

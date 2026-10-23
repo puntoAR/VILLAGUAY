@@ -22,8 +22,10 @@ export const Colores = {
     libreTexto: '#15803D',
     reservado: '#FEE2E2',
     reservadoTexto: '#B91C1C',
-    mantenimiento: '#F1F5F9',
-    mantenimientoTexto: '#475569',
+    fijo: '#E0F2FE',
+    fijoTexto: '#0369A1',
+    mantenimiento: '#FEF3C7',
+    mantenimientoTexto: '#B45309',
   },
   oscuro: {
     fondo: '#0B130E',
@@ -37,7 +39,9 @@ export const Colores = {
     libreTexto: '#4ADE80',
     reservado: '#451A1A',
     reservadoTexto: '#F87171',
-    mantenimiento: '#1E293B',
-    mantenimientoTexto: '#94A3B8',
+    fijo: '#0C4A6E',
+    fijoTexto: '#38BDF8',
+    mantenimiento: '#78350F',
+    mantenimientoTexto: '#FCD34D',
   }
 };

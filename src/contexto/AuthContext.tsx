@@ -33,32 +33,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [soportaBiometria, setSoportaBiometria] = useState(false);
 
   useEffect(() => {
+    let montado = true;
     const inicializar = async () => {
-      const u = await AuthServicio.obtenerUsuarioSesion();
-      setUsuario(u);
-      const bio = await AuthServicio.soportaBiometria();
-      setSoportaBiometria(bio);
-      setCargando(false);
+      try {
+        const u = await AuthServicio.obtenerUsuarioSesion();
+        if (montado) setUsuario(u);
+        const bio = await AuthServicio.soportaBiometria();
+        if (montado) setSoportaBiometria(bio);
+      } catch (err) {
+        console.warn('[AuthContext] Error inicializando sesión:', err);
+      } finally {
+        if (montado) setCargando(false);
+      }
     };
     inicializar();
+    return () => {
+      montado = false;
+    };
   }, []);
 
   const iniciarSesion = async (email: string, password?: string) => {
-    const res = await AuthServicio.iniciarSesion(email, password);
-    if (res.exito && res.usuario) {
-      setUsuario(res.usuario);
-      return { exito: true };
+    try {
+      const res = await AuthServicio.iniciarSesion(email, password);
+      if (res.exito && res.usuario) {
+        setUsuario(res.usuario);
+        return { exito: true };
+      }
+      return { exito: false, mensaje: res.mensaje || 'Error al iniciar sesión' };
+    } catch (e: any) {
+      return { exito: false, mensaje: e?.message || 'Error de conexión' };
     }
-    return { exito: false, mensaje: res.mensaje };
   };
 
   const cerrarSesion = async () => {
-    await AuthServicio.cerrarSesion();
-    setUsuario(null);
+    try {
+      await AuthServicio.cerrarSesion();
+    } finally {
+      setUsuario(null);
+    }
   };
 
   const autenticarBiometria = async () => {
-    return await AuthServicio.autenticarConBiometria();
+    try {
+      return await AuthServicio.autenticarConBiometria();
+    } catch {
+      return false;
+    }
   };
 
   const actualizarAvatar = (avatarUrl: string) => {
