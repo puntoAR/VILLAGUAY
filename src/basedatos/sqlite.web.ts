@@ -1,5 +1,5 @@
 // src/basedatos/sqlite.web.ts
-// Adaptador de datos en memoria para navegador web (PC) sin dependencias nativas
+// Adaptador de datos en memoria y LocalStorage para navegador web (PC) sin dependencias nativas
 
 import { Espacio, Deporte, Reserva, ReservaFija, BloqueoMantenimiento, Usuario } from '../tipos';
 import { ESPACIOS_MOCK } from '../mocks/espacios';
@@ -8,6 +8,53 @@ import { RESERVAS_MOCK } from '../mocks/reservas';
 import { RESERVAS_FIJAS_MOCK } from '../mocks/fijas';
 import { BLOQUEOS_MOCK } from '../mocks/bloqueos';
 import { USUARIOS_MOCK } from '../mocks/usuarios';
+
+const CLAVE_LOCAL_RESERVAS = 'reservas_vgy_web';
+const CLAVE_LOCAL_BLOQUEOS = 'bloqueos_vgy_web';
+
+function persistirWeb() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(CLAVE_LOCAL_RESERVAS, JSON.stringify(RESERVAS_MOCK));
+      window.localStorage.setItem(CLAVE_LOCAL_BLOQUEOS, JSON.stringify(BLOQUEOS_MOCK));
+    } catch {}
+  }
+}
+
+function inicializarDesdeLocalStorage() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const guardadas = window.localStorage.getItem(CLAVE_LOCAL_RESERVAS);
+      if (guardadas) {
+        const parsed = JSON.parse(guardadas);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const idsExistentes = new Set(parsed.map((r: any) => r.id));
+          for (const m of RESERVAS_MOCK) {
+            if (!idsExistentes.has(m.id)) {
+              parsed.push(m);
+            }
+          }
+          RESERVAS_MOCK.length = 0;
+          RESERVAS_MOCK.push(...parsed);
+        }
+      }
+      const bGuardados = window.localStorage.getItem(CLAVE_LOCAL_BLOQUEOS);
+      if (bGuardados) {
+        const parsedB = JSON.parse(bGuardados);
+        if (Array.isArray(parsedB) && parsedB.length > 0) {
+          const idsB = new Set(parsedB.map((b: any) => b.id));
+          for (const m of BLOQUEOS_MOCK) {
+            if (!idsB.has(m.id)) parsedB.push(m);
+          }
+          BLOQUEOS_MOCK.length = 0;
+          BLOQUEOS_MOCK.push(...parsedB);
+        }
+      }
+    } catch {}
+  }
+}
+
+inicializarDesdeLocalStorage();
 
 export interface InterfazBD {
   getAllAsync<T = any>(sql: string, params?: any[]): Promise<T[]>;
@@ -47,10 +94,12 @@ class WebDatabaseMock implements InterfazBD {
       } else {
         RESERVAS_MOCK.unshift(resObj);
       }
+      persistirWeb();
     } else if (s.includes('update reservas set estado = "cancelada"')) {
       const id = params[0];
       const r = RESERVAS_MOCK.find(x => x.id === id);
       if (r) r.estado = 'cancelada';
+      persistirWeb();
     } else if (s.includes('update reservas set estado = "cumplida"')) {
       const id = params[1] ?? params[0];
       const r = RESERVAS_MOCK.find(x => x.id === id);
@@ -58,21 +107,26 @@ class WebDatabaseMock implements InterfazBD {
         r.estado = 'cumplida';
         r.ingresoEn = new Date().toISOString();
       }
+      persistirWeb();
     } else if (s.includes('update reservas set estado = "ausente"')) {
       const id = params[0];
       const r = RESERVAS_MOCK.find(x => x.id === id);
       if (r) r.estado = 'ausente';
+      persistirWeb();
     } else if (s.includes('update reservas set estadopago = ?')) {
       const [nuevoEstado, id] = params;
       const r = RESERVAS_MOCK.find(x => x.id === id);
       if (r) r.estadoPago = nuevoEstado;
+      persistirWeb();
     } else if (s.includes('insert into bloqueos')) {
       const [id, espacioId, fecha, inicio, fin, motivo, creadoEn] = params;
       BLOQUEOS_MOCK.push({ id, espacioId, fecha, inicio, fin, motivo, creadoEn });
+      persistirWeb();
     } else if (s.includes('delete from bloqueos')) {
       const id = params[0];
       const idx = BLOQUEOS_MOCK.findIndex(b => b.id === id);
       if (idx >= 0) BLOQUEOS_MOCK.splice(idx, 1);
+      persistirWeb();
     }
     return { changes: 1, lastInsertRowId: 1 };
   }
@@ -123,9 +177,11 @@ class WebDatabaseMock implements InterfazBD {
 
     if (s.includes('from reservas')) {
       let lista = [...RESERVAS_MOCK];
-      if (s.includes('usuarioid = ?')) {
+      if (s.includes('usuarioid = ?') && s.includes('confirmada')) {
+        lista = lista.filter(r => r.usuarioId === params[0] && r.estado === 'confirmada');
+      } else if (s.includes('usuarioid = ?')) {
         lista = lista.filter(r => r.usuarioId === params[0]);
-      } else if (s.includes('espacioid = ? and estado = "confirmada"')) {
+      } else if (s.includes('espacioid = ?') && s.includes('confirmada')) {
         lista = lista.filter(r => r.espacioId === params[0] && r.estado === 'confirmada');
       }
       const idVistos = new Set<string>();

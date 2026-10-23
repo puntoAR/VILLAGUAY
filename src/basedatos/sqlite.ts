@@ -121,9 +121,11 @@ class WebDatabaseMock {
 
     if (s.includes('from reservas')) {
       let lista = [...RESERVAS_MOCK];
-      if (s.includes('usuarioid = ?')) {
+      if (s.includes('usuarioid = ?') && s.includes('confirmada')) {
+        lista = lista.filter(r => r.usuarioId === params[0] && r.estado === 'confirmada');
+      } else if (s.includes('usuarioid = ?')) {
         lista = lista.filter(r => r.usuarioId === params[0]);
-      } else if (s.includes('espacioid = ? and estado = "confirmada"')) {
+      } else if (s.includes('espacioid = ?') && s.includes('confirmada')) {
         lista = lista.filter(r => r.espacioId === params[0] && r.estado === 'confirmada');
       }
       return lista as any;

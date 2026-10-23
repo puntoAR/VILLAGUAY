@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Pressable, RefreshControl, Platform } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../contexto/AuthContext';
 import { useTema } from '../../contexto/ThemeContext';
@@ -41,6 +42,13 @@ export default function PantallaMisTurnos() {
       setRefrescando(false);
     }
   }, [usuarioId]);
+
+  // Recargar al enfocar la pestaña (evita desincronización por caché de pestañas)
+  useFocusEffect(
+    useCallback(() => {
+      cargarReservas();
+    }, [cargarReservas])
+  );
 
   useEffect(() => {
     cargarReservas();

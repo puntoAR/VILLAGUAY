@@ -125,6 +125,18 @@ export default function PantallaDetalleCancha() {
       setModalVisible(false);
       await cargarGrilla();
 
+      if (Platform.OS === 'web') {
+        const irATurnos = typeof window !== 'undefined'
+          ? window.confirm(
+              `¡Reserva Confirmada!\n\nTu turno en ${espacio.nombre} para las ${turnoSeleccionado.inicio} hs quedó confirmado con éxito.\n\n¿Querés ir a "Mis Turnos" a ver el detalle y el pase de acceso QR?`
+            )
+          : false;
+        if (irATurnos) {
+          router.push('/(tabs)/turnos');
+        }
+        return;
+      }
+
       Alert.alert(
         '¡Reserva Confirmada!',
         `Tu turno en ${espacio.nombre} para las ${turnoSeleccionado.inicio} hs quedó confirmado. Mostrá el código QR al ingresar.`,
