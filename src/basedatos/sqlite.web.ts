@@ -128,6 +128,12 @@ class WebDatabaseMock implements InterfazBD {
       } else if (s.includes('espacioid = ? and estado = "confirmada"')) {
         lista = lista.filter(r => r.espacioId === params[0] && r.estado === 'confirmada');
       }
+      const idVistos = new Set<string>();
+      lista = lista.filter(r => {
+        if (idVistos.has(r.id)) return false;
+        idVistos.add(r.id);
+        return true;
+      });
       return lista as any;
     }
 

@@ -141,7 +141,7 @@ export default function PantallaMisTurnos() {
 
       <FlatList
         data={listaActual}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
         refreshControl={

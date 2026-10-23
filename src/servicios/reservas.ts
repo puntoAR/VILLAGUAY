@@ -55,7 +55,7 @@ export const ReservasServicio = {
         return crearError('TURNO_OCUPADO', 'Ese turno ya fue reservado por otro usuario.');
       }
 
-      const idReserva = `res-${Date.now().toString().slice(-4)}`;
+      const idReserva = `res-${Date.now()}`;
       const horaLimpia = params.inicio.replace(':', '');
       const codigoQr = `VGY-${idReserva.replace('res-', '')}-${params.espacioId.replace('esp-', '')}-${horaLimpia}`;
 
@@ -106,7 +106,9 @@ export const ReservasServicio = {
         ]
       );
 
-      RESERVAS_MOCK.unshift(nuevaReserva);
+      if (!RESERVAS_MOCK.some(x => x.id === nuevaReserva.id)) {
+        RESERVAS_MOCK.unshift(nuevaReserva);
+      }
 
       await Haptica.confirmacion();
       await NotificacionesServicio.programarRecordatorioTurno(
