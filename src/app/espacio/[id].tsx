@@ -2,7 +2,7 @@
 // Detalle de cancha y grilla horaria de disponibilidad
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, FlatList, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { useTema } from '../../contexto/ThemeContext';
@@ -484,23 +484,25 @@ const styles = StyleSheet.create({
   overlayModal: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
     alignItems: 'center',
+    padding: Platform.OS === 'web' ? 20 : 0,
   },
   contenidoModal: {
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 480,
+    borderRadius: Platform.OS === 'web' ? 20 : 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
-    borderBottomWidth: 0,
-    padding: 20,
+    borderBottomWidth: Platform.OS === 'web' ? 1 : 0,
+    padding: 24,
     gap: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: Platform.OS === 'web' ? 8 : -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   tituloModal: {
     fontSize: 18,
