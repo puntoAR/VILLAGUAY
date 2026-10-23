@@ -34,6 +34,13 @@ function inicializarDesdeLocalStorage() {
               parsed.push(m);
             }
           }
+          // Asegurar que los datos de fecha y horario de los mocks estén sincronizados
+          for (let i = 0; i < parsed.length; i++) {
+            const m = RESERVAS_MOCK.find(x => x.id === parsed[i].id);
+            if (m) {
+              parsed[i] = { ...parsed[i], fecha: m.fecha, inicio: m.inicio, fin: m.fin, cancelableHasta: m.cancelableHasta, nombreEspacio: m.nombreEspacio };
+            }
+          }
           RESERVAS_MOCK.length = 0;
           RESERVAS_MOCK.push(...parsed);
         }
@@ -71,6 +78,24 @@ class WebDatabaseMock implements InterfazBD {
     if (s.includes('insert into reservas')) {
       const [id, turnoId, espacioId, usuarioId, cantidadPersonas, codigoQr, estado, ingresoEn, creadaEn, cancelableHasta, conLuz, montoTotal, estadoPago, nombreUsuario, telefonoUsuario, nombreEspacio] = params;
       const existe = RESERVAS_MOCK.findIndex(r => r.id === id);
+
+      let fechaTurno: string | undefined;
+      let horaInicio: string | undefined;
+      let horaFin: string | undefined;
+      if (cancelableHasta) {
+        try {
+          const d = new Date(new Date(cancelableHasta).getTime() + 4 * 60 * 60 * 1000);
+          if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            fechaTurno = `${y}-${m}-${dia}`;
+            horaInicio = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            horaFin = `${String((d.getHours() + 1) % 24).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          }
+        } catch {}
+      }
+
       const resObj: Reserva = {
         id,
         turnoId,
@@ -88,6 +113,9 @@ class WebDatabaseMock implements InterfazBD {
         nombreUsuario,
         telefonoUsuario,
         nombreEspacio,
+        fecha: fechaTurno,
+        inicio: horaInicio,
+        fin: horaFin,
       };
       if (existe >= 0) {
         RESERVAS_MOCK[existe] = resObj;

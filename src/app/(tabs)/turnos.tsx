@@ -16,6 +16,55 @@ import { ReservasServicio } from '../../servicios/reservas';
 import { esError } from '../../servicios/api';
 import { Reserva } from '../../tipos';
 
+function obtenerDatosTurno(item: Reserva): { fechaTexto: string; horarioTexto: string } {
+  let fechaStr = item.fecha;
+  let inicioStr = item.inicio;
+  let finStr = item.fin;
+
+  // Deducir desde cancelableHasta (cancelableHasta = fechaTurno - 4 hs)
+  if ((!fechaStr || !inicioStr) && item.cancelableHasta) {
+    try {
+      const d = new Date(new Date(item.cancelableHasta).getTime() + 4 * 60 * 60 * 1000);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        if (!fechaStr) fechaStr = `${y}-${m}-${dia}`;
+        if (!inicioStr) inicioStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        if (!finStr) finStr = `${String((d.getHours() + 1) % 24).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+    } catch {}
+  }
+
+  // Deducir desde turnoId si aún no tiene (ej: tur-esp-02-20261024-19 o tur-0219-19)
+  if (!inicioStr && item.turnoId) {
+    const partes = item.turnoId.split('-');
+    const ult = partes[partes.length - 1];
+    if (ult && !isNaN(Number(ult))) {
+      const hNum = Number(ult);
+      inicioStr = `${String(hNum).padStart(2, '0')}:00`;
+      finStr = `${String((hNum + 1) % 24).padStart(2, '0')}:00`;
+    }
+  }
+
+  // Formato amigable de fecha (ej: Sábado 24 de Octubre 2026)
+  let fechaTexto = fechaStr || item.creadaEn.split('T')[0];
+  try {
+    const rawFecha = fechaStr || item.creadaEn.split('T')[0];
+    const [y, m, d] = rawFecha.split('-').map(Number);
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) {
+      fechaTexto = `${diasSemana[dt.getDay()]} ${d} de ${meses[m - 1]} ${y}`;
+    }
+  } catch {}
+
+  const horarioTexto = inicioStr ? (finStr ? `${inicioStr} a ${finStr} hs` : `${inicioStr} hs`) : 'Horario a confirmar';
+
+  return { fechaTexto, horarioTexto };
+}
+
 export default function PantallaMisTurnos() {
   const { colores } = useTema();
   const { usuario } = useAuth();
@@ -171,6 +220,7 @@ export default function PantallaMisTurnos() {
           />
         }
         renderItem={({ item }) => {
+          const { fechaTexto, horarioTexto } = obtenerDatosTurno(item);
           const esCancelada = item.estado === 'cancelada';
           const esCumplida = item.estado === 'cumplida';
           const esAusente = item.estado === 'ausente';
@@ -197,12 +247,29 @@ export default function PantallaMisTurnos() {
             <View style={[styles.tarjetaReserva, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
               {/* Cabecera */}
               <View style={styles.filaCabecera}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, gap: 5 }}>
                   <Text style={[styles.nombreEspacio, { color: colores.texto }]}>
                     {item.nombreEspacio || item.espacioId}
                   </Text>
-                  <Text style={[styles.fechaTexto, { color: colores.textoSecundario }]}>
-                    Fecha: {item.creadaEn.split('T')[0]} • {item.cantidadPersonas} jugadores
+
+                  {/* Fecha y Horario del Turno destacados */}
+                  <View style={styles.contenedorDetallesTurno}>
+                    <View style={styles.filaItemTurno}>
+                      <Icono nombre="calendar" size={15} color={Colores.primarioClaro} />
+                      <Text style={[styles.textoFechaTurno, { color: colores.texto }]}>
+                        {fechaTexto}
+                      </Text>
+                    </View>
+                    <View style={styles.filaItemTurno}>
+                      <Icono nombre="time" size={15} color={Colores.primarioClaro} />
+                      <Text style={[styles.textoHorarioTurno, { color: Colores.primarioClaro }]}>
+                        {horarioTexto}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.textoJugadores, { color: colores.textoSecundario }]}>
+                    👥 {item.cantidadPersonas} jugadores {item.conLuz ? '• 💡 Iluminación nocturna' : ''}
                   </Text>
                 </View>
 
@@ -215,18 +282,33 @@ export default function PantallaMisTurnos() {
               {item.estado === 'confirmada' ? (
                 <View style={styles.bloqueQr}>
                   <View style={styles.qrContenedor}>
-                    <QRCode value={item.codigoQr} size={95} color="#0F172A" backgroundColor="#FFFFFF" />
+                    <QRCode value={item.codigoQr} size={90} color="#0F172A" backgroundColor="#FFFFFF" />
                   </View>
                   <View style={styles.infoTurno}>
-                    <Text style={[styles.codigoTexto, { color: colores.texto }]}>{item.codigoQr}</Text>
-                    <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
-                      Presentá este código offline al encargado al ingresar al predio.
+                    <Text style={[styles.tituloPaseAcceso, { color: colores.texto }]}>
+                      Pase Digital de Acceso
                     </Text>
-                    {item.conLuz && (
-                      <Text style={[styles.badgeLuz, { color: '#B45309' }]}>
-                        💡 Con iluminación nocturna
-                      </Text>
-                    )}
+                    <Text style={[styles.codigoTexto, { color: Colores.primarioClaro }]}>
+                      {item.codigoQr}
+                    </Text>
+                    <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
+                      Presentá este código offline al encargado al ingresar al predio para validar el acceso sin conexión.
+                    </Text>
+                    {item.montoTotal ? (
+                      <View style={styles.filaMonto}>
+                        <Text style={[styles.textoMonto, { color: colores.texto }]}>
+                          Total: ${item.montoTotal.toLocaleString('es-AR')}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.estadoPagoTexto,
+                            { color: item.estadoPago === 'pagado' ? '#16A34A' : '#D97706' },
+                          ]}
+                        >
+                          {item.estadoPago === 'pagado' ? '• Abonado' : '• Abonar en predio'}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               ) : (
@@ -236,7 +318,7 @@ export default function PantallaMisTurnos() {
                   </Text>
                   {item.montoTotal && (
                     <Text style={[styles.subtextoQr, { color: colores.textoMuted }]}>
-                      Monto: ${item.montoTotal.toLocaleString('es-AR')}
+                      Monto: ${item.montoTotal.toLocaleString('es-AR')} ({item.estadoPago === 'pagado' ? 'Abonado' : 'Pendiente'})
                     </Text>
                   )}
                 </View>
@@ -302,10 +384,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   nombreEspacio: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
-  fechaTexto: {
+  contenedorDetallesTurno: {
+    gap: 4,
+    marginTop: 3,
+    marginBottom: 2,
+  },
+  filaItemTurno: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  textoFechaTurno: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  textoHorarioTurno: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  textoJugadores: {
     fontSize: 12,
     marginTop: 2,
   },
@@ -323,8 +423,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     backgroundColor: 'rgba(150, 150, 150, 0.05)',
-    padding: 10,
-    borderRadius: 10,
+    padding: 12,
+    borderRadius: 12,
   },
   qrContenedor: {
     padding: 6,
@@ -335,13 +435,34 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  tituloPaseAcceso: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   codigoTexto: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   subtextoQr: {
     fontSize: 11,
     lineHeight: 15,
+  },
+  filaMonto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 3,
+  },
+  textoMonto: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  estadoPagoTexto: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   badgeLuz: {
     fontSize: 11,

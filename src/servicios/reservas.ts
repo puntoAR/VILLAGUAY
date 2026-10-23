@@ -51,6 +51,7 @@ export const ReservasServicio = {
       const ahoraIso = new Date().toISOString();
       const [anio, mes, dia] = params.fecha.split('-').map(Number);
       const [hora, min] = params.inicio.split(':').map(Number);
+      const horaFin = `${String((hora + 1) % 24).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
       const fechaTurno = new Date(anio, mes - 1, dia, hora, min);
       const cancelableHasta = new Date(fechaTurno.getTime() - 4 * 60 * 60 * 1000).toISOString();
 
@@ -71,6 +72,9 @@ export const ReservasServicio = {
         nombreUsuario: params.nombreUsuario,
         telefonoUsuario: params.telefonoUsuario,
         nombreEspacio: params.nombreEspacio,
+        fecha: params.fecha,
+        inicio: params.inicio,
+        fin: horaFin,
       };
 
       await db.runAsync(
@@ -138,6 +142,9 @@ export const ReservasServicio = {
         nombreUsuario: r.nombreUsuario || undefined,
         telefonoUsuario: r.telefonoUsuario || undefined,
         nombreEspacio: r.nombreEspacio || undefined,
+        fecha: r.fecha || undefined,
+        inicio: r.inicio || undefined,
+        fin: r.fin || undefined,
       }));
 
       const proximas = reservas.filter(r => r.estado === 'confirmada');
@@ -323,6 +330,9 @@ export const ReservasServicio = {
         nombreUsuario: r.nombreUsuario || undefined,
         telefonoUsuario: r.telefonoUsuario || undefined,
         nombreEspacio: r.nombreEspacio || undefined,
+        fecha: r.fecha || undefined,
+        inicio: r.inicio || undefined,
+        fin: r.fin || undefined,
       }));
 
       const idSet = new Set(mapeadas.map(m => m.id));

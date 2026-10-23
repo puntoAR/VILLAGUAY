@@ -64,6 +64,9 @@ export interface Reserva {
   nombreUsuario?: string;
   telefonoUsuario?: string;
   nombreEspacio?: string;
+  fecha?: string; // "AAAA-MM-DD"
+  inicio?: string; // "HH:MM"
+  fin?: string; // "HH:MM"
 }
 
 export interface MetricasMacro {
