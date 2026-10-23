@@ -2,7 +2,7 @@
 // Perfil del usuario y configuración general
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, Pressable, ScrollView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
@@ -55,7 +55,16 @@ export default function PantallaPerfil() {
     await WebBrowser.openBrowserAsync('https://villaguay.gob.ar/deportes');
   };
 
-  const handleCerrarSesion = () => {
+  const handleCerrarSesion = async () => {
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm('¿Deseás salir de tu cuenta?') : true;
+      if (ok) {
+        await cerrarSesion();
+        router.replace('/login');
+      }
+      return;
+    }
+
     Alert.alert('Cerrar Sesión', '¿Deseás salir de tu cuenta?', [
       { text: 'Cancelar', style: 'cancel' },
       {

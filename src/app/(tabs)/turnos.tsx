@@ -2,7 +2,7 @@
 // Listado de reservas: Próximos Turnos e Historial con código QR offline
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, Pressable, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, Pressable, RefreshControl, Platform } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../contexto/AuthContext';
 import { useTema } from '../../contexto/ThemeContext';
@@ -60,6 +60,26 @@ export default function PantallaMisTurnos() {
       ? 'Faltan menos de 4 horas para el turno. La cancelación quedará registrada como tardía en tu cuenta municipal.'
       : 'Estás a tiempo (más de 4 horas de anticipación). El turno quedará liberado sin penalizaciones.';
 
+    const ejecutarCancelacion = async () => {
+      const resp = await ReservasServicio.cancelarReserva(reserva.id, usuarioId);
+      if (!esError(resp)) {
+        await Haptica.exito();
+        Alert.alert('Turno Cancelado', 'El horario fue liberado correctamente.');
+        cargarReservas();
+      } else {
+        await Haptica.error();
+        Alert.alert('Error', resp.error.mensaje);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm(`Cancelar Reserva:\n${mensajeAdvertencia}\n\n¿Confirmás la cancelación?`) : true;
+      if (ok) {
+        ejecutarCancelacion();
+      }
+      return;
+    }
+
     Alert.alert(
       'Cancelar Reserva',
       `${mensajeAdvertencia}\n\n¿Confirmás la cancelación?`,
@@ -68,17 +88,7 @@ export default function PantallaMisTurnos() {
         {
           text: 'Sí, cancelar turno',
           style: 'destructive',
-          onPress: async () => {
-            const resp = await ReservasServicio.cancelarReserva(reserva.id, usuarioId);
-            if (!esError(resp)) {
-              await Haptica.exito();
-              Alert.alert('Turno Cancelado', 'El horario fue liberado correctamente.');
-              cargarReservas();
-            } else {
-              await Haptica.error();
-              Alert.alert('Error', resp.error.mensaje);
-            }
-          },
+          onPress: ejecutarCancelacion,
         },
       ]
     );
