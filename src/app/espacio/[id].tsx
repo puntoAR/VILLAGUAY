@@ -91,6 +91,18 @@ export default function PantallaDetalleCancha() {
       }
       return;
     }
+
+    if (usuario && usuario.rol !== 'jugador') {
+      const nombreRol = usuario.rol === 'encargado' ? 'Encargado de Complejo' : 'Director de Deportes';
+      const mensaje = `Como ${nombreRol} no realizás reservas particulares de canchas. Tu función municipal es la gestión y el control de accesos.\n\nPara reservar un turno, ingresá con la cuenta de Jugador (usuario@villaguay.gob.ar).`;
+      if (Platform.OS === 'web') {
+        window.alert(`Acceso de Personal Municipal:\n\n${mensaje}`);
+      } else {
+        Alert.alert('Acceso de Personal Municipal', mensaje);
+      }
+      return;
+    }
+
     Haptica.seleccionSuave();
     setTurnoSeleccionado(t);
     setModalVisible(true);

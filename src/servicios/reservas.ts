@@ -24,6 +24,18 @@ export const ReservasServicio = {
     try {
       const db = await obtenerBD();
 
+      // Segregación estricta de roles: el personal municipal no realiza reservas particulares
+      const usuarioObj = await db.getFirstAsync<any>(
+        'SELECT rol FROM usuarios WHERE id = ?',
+        [params.usuarioId]
+      );
+      if (usuarioObj && usuarioObj.rol !== 'jugador') {
+        return crearError(
+          'ACCESO_DENEGADO_ROL',
+          'El personal municipal (encargados y directores) no puede realizar reservas particulares de canchas. Su función es la gestión de espacios y control de accesos.'
+        );
+      }
+
       const activas = await db.getAllAsync<any>(
         'SELECT * FROM reservas WHERE usuarioId = ? AND estado = "confirmada"',
         [params.usuarioId]

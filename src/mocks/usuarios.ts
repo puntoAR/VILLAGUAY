@@ -16,6 +16,17 @@ export const USUARIOS_MOCK: Usuario[] = [
     password: 'password123',
   },
   {
+    id: 'usr-jugador-2',
+    nombre: 'Emanuel Gómez',
+    email: 'emanuel@villaguay.gob.ar',
+    telefono: '3455-667788',
+    rol: 'jugador',
+    espaciosFavoritos: ['esp-07'],
+    cancelacionesTardias: 0,
+    ausencias: 0,
+    password: 'password123',
+  },
+  {
     id: 'usr-marcelo',
     nombre: 'Marcelo (Encargado)',
     email: 'marcelo@villaguay.gob.ar',

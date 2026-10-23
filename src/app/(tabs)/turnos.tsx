@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Pressable, RefreshControl, Platform } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../contexto/AuthContext';
 import { useTema } from '../../contexto/ThemeContext';
@@ -66,6 +66,7 @@ function obtenerDatosTurno(item: Reserva): { fechaTexto: string; horarioTexto: s
 }
 
 export default function PantallaMisTurnos() {
+  const router = useRouter();
   const { colores } = useTema();
   const { usuario } = useAuth();
 
@@ -159,6 +160,31 @@ export default function PantallaMisTurnos() {
 
   return (
     <View style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+      {/* Aviso contextual de rol municipal */}
+      {usuario && usuario.rol !== 'jugador' && (
+        <View style={[styles.tarjetaRolMunicipal, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
+          <Icono nombre="shield-checkmark" size={24} color={Colores.primarioClaro} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[styles.tituloRolMunicipal, { color: colores.texto }]}>
+              Sesión: {usuario.rol === 'encargado' ? 'Encargado de Complejo' : 'Director de Deportes'}
+            </Text>
+            <Text style={[styles.descRolMunicipal, { color: colores.textoSecundario }]}>
+              El personal municipal no genera reservas particulares. Tu herramienta principal es el control de accesos y validación de turnos.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.botonAbrirEscaner,
+                { backgroundColor: Colores.primarioClaro, opacity: pressed ? 0.8 : 1 },
+              ]}
+              onPress={() => router.push('/escaner')}
+            >
+              <Icono nombre="qr-code-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.textoBotonAbrirEscaner}>Abrir Escáner de Acceso QR</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* Selector de Pestañas */}
       <View style={[styles.barraPestanas, { backgroundColor: colores.tarjeta, borderColor: colores.borde }]}>
         <Pressable
@@ -210,10 +236,18 @@ export default function PantallaMisTurnos() {
         }
         ListEmptyComponent={
           <EstadoVacio
-            icono="calendar-outline"
-            titulo={pestana === 'proximos' ? 'No tenés turnos próximos' : 'No tenés turnos pasados'}
+            icono={usuario && usuario.rol !== 'jugador' ? 'shield-outline' : 'calendar-outline'}
+            titulo={
+              usuario && usuario.rol !== 'jugador'
+                ? 'Sin turnos particulares'
+                : pestana === 'proximos'
+                ? 'No tenés turnos próximos'
+                : 'No tenés turnos pasados'
+            }
             subtitulo={
-              pestana === 'proximos'
+              usuario && usuario.rol !== 'jugador'
+                ? 'Como personal municipal gestionás los accesos de los jugadores. Usá el escáner para validar turnos.'
+                : pestana === 'proximos'
                 ? 'Elegí una cancha y reservá tu horario favorito.'
                 : 'Acá vas a ver los turnos anteriores, asistencias y cancelaciones.'
             }
@@ -348,6 +382,39 @@ export default function PantallaMisTurnos() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
+  },
+  tarjetaRolMunicipal: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  tituloRolMunicipal: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  descRolMunicipal: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  botonAbrirEscaner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  textoBotonAbrirEscaner: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   barraPestanas: {
     flexDirection: 'row',
