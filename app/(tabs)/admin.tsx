@@ -91,6 +91,7 @@ export default function PantallaAdmin() {
   const [personalTelefono, setPersonalTelefono] = useState('3455-');
   const [personalPassword, setPersonalPassword] = useState('123456');
   const [personalRol, setPersonalRol] = useState<Rol>('encargado');
+  const [filtroRolPersonal, setFiltroRolPersonal] = useState<'todos' | 'administrador' | 'encargado' | 'jugador'>('todos');
   const [creandoPersonal, setCreandoPersonal] = useState(false);
 
   const cargarDatos = async () => {
@@ -125,7 +126,7 @@ export default function PantallaAdmin() {
       setFijas(respFij.datos);
     }
 
-    AuthServicio.obtenerUsuariosPersonal().then(setPersonal);
+    AuthServicio.obtenerTodosLosUsuarios().then(setPersonal);
   };
 
   useEffect(() => {
@@ -233,18 +234,21 @@ export default function PantallaAdmin() {
 
     setCreandoPersonal(true);
     try {
-      const resp = await AuthServicio.crearUsuarioPersonal({
-        nombre: personalNombre.trim(),
-        email: personalEmail.trim().toLowerCase(),
-        telefono: personalTelefono.trim(),
-        password: personalPassword,
-        rol: personalRol,
-      });
+      const resp = await AuthServicio.crearUsuarioPorAdmin(
+        {
+          nombre: personalNombre.trim(),
+          email: personalEmail.trim().toLowerCase(),
+          telefono: personalTelefono.trim(),
+          password: personalPassword,
+          rol: personalRol,
+        },
+        usuario?.rol
+      );
 
       if (!esError(resp)) {
         Alert.alert(
-          'Personal Creado',
-          `Se dio de alta a ${resp.datos.nombre} con el rol ${personalRol.toUpperCase()}.`
+          '¡Usuario Creado Exitosamente! 🎉',
+          `Se dio de alta a ${resp.datos.nombre} con el rol ${resp.datos.rol.toUpperCase()}. Ya puede iniciar sesión en la aplicación.`
         );
         setModalPersonalVisible(false);
         setPersonalNombre('');
@@ -253,7 +257,7 @@ export default function PantallaAdmin() {
         setPersonalPassword('123456');
         cargarDatos();
       } else {
-        Alert.alert('Error', resp.error.mensaje);
+        Alert.alert('No se pudo crear el usuario', resp.error.mensaje);
       }
     } finally {
       setCreandoPersonal(false);
@@ -959,15 +963,15 @@ export default function PantallaAdmin() {
       )}
 
       {/* ============================================================= */}
-      {/* ROL DIRECTOR: 4. GESTIÓN EXCLUSIVA DE PERSONAL MUNICIPAL */}
+      {/* ROL DIRECTOR: 4. GESTIÓN DE PERSONAL Y USUARIOS */}
       {/* ============================================================= */}
       {esAdmin && seccionActiva === 'personal' && (
         <View style={styles.seccionContenido}>
           <View style={styles.filaTituloBoton}>
             <View>
-              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Personal Municipal Autorizado</Text>
+              <Text style={[styles.seccionTitulo, { color: colores.texto }]}>Usuarios y Personal del Sistema</Text>
               <Text style={{ color: colores.textoSecundario, fontSize: 12 }}>
-                Gestión de encargados de predio y personal directivo
+                Gestión autorizada de administradores, encargados y jugadores
               </Text>
             </View>
             <TouchableOpacity
@@ -975,56 +979,104 @@ export default function PantallaAdmin() {
               onPress={() => setModalPersonalVisible(true)}
             >
               <Icono nombre="person-add-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.botonNuevoTexto}>+ Alta Personal</Text>
+              <Text style={styles.botonNuevoTexto}>+ Alta Usuario</Text>
             </TouchableOpacity>
           </View>
 
-          {personal.map(p => (
-            <View
-              key={p.id}
-              style={[
-                styles.tarjetaPersonal,
-                { backgroundColor: colores.tarjeta, borderColor: colores.borde },
-              ]}
-            >
-              <View style={styles.avatarPersonal}>
-                <Icono
-                  nombre={p.rol === 'administrador' ? 'shield-checkmark' : 'id-card'}
-                  size={24}
-                  color={p.rol === 'administrador' ? '#D97706' : Colores.primario}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.nombrePersonal, { color: colores.texto }]}>{p.nombre}</Text>
-                  <View
+          {/* Filtros de roles para la lista */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {[
+                { id: 'todos', label: `Todos (${personal.length})` },
+                { id: 'administrador', label: `Directores (${personal.filter(p => p.rol === 'administrador').length})` },
+                { id: 'encargado', label: `Encargados (${personal.filter(p => p.rol === 'encargado').length})` },
+                { id: 'jugador', label: `Jugadores (${personal.filter(p => p.rol === 'jugador').length})` },
+              ].map(f => {
+                const activo = filtroRolPersonal === f.id;
+                return (
+                  <TouchableOpacity
+                    key={f.id}
                     style={[
-                      styles.badgeMiniRol,
+                      styles.chipEspacio,
                       {
-                        backgroundColor:
-                          p.rol === 'administrador' ? 'rgba(217, 119, 6, 0.15)' : 'rgba(26, 77, 46, 0.15)',
+                        backgroundColor: activo ? Colores.primarioClaro : colores.tarjeta,
+                        borderColor: activo ? Colores.primarioClaro : colores.borde,
                       },
                     ]}
+                    onPress={() => setFiltroRolPersonal(f.id as any)}
                   >
-                    <Text
-                      style={[
-                        styles.badgeMiniRolTexto,
-                        { color: p.rol === 'administrador' ? '#D97706' : Colores.primario },
-                      ]}
-                    >
-                      {p.rol.toUpperCase()}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: activo ? '#FFFFFF' : colores.texto }}>
+                      {f.label}
                     </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          {personal
+            .filter(p => filtroRolPersonal === 'todos' || p.rol === filtroRolPersonal)
+            .map(p => {
+              const esAdminUser = p.rol === 'administrador';
+              const esEncargadoUser = p.rol === 'encargado';
+              let iconoRol = 'football-outline';
+              let colorRol = Colores.primario;
+              let badgeBg = 'rgba(26, 77, 46, 0.15)';
+
+              if (esAdminUser) {
+                iconoRol = 'shield-checkmark';
+                colorRol = '#D97706';
+                badgeBg = 'rgba(217, 119, 6, 0.15)';
+              } else if (esEncargadoUser) {
+                iconoRol = 'id-card';
+                colorRol = Colores.secundario;
+                badgeBg = 'rgba(232, 170, 66, 0.2)';
+              }
+
+              return (
+                <View
+                  key={p.id}
+                  style={[
+                    styles.tarjetaPersonal,
+                    { backgroundColor: colores.tarjeta, borderColor: colores.borde },
+                  ]}
+                >
+                  <View style={[styles.avatarPersonal, { backgroundColor: colorRol + '20' }]}>
+                    <Icono
+                      nombre={iconoRol}
+                      size={24}
+                      color={colorRol}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[styles.nombrePersonal, { color: colores.texto }]}>{p.nombre}</Text>
+                      <View
+                        style={[
+                          styles.badgeMiniRol,
+                          { backgroundColor: badgeBg },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.badgeMiniRolTexto,
+                            { color: colorRol },
+                          ]}
+                        >
+                          {p.rol.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={{ color: colores.textoSecundario, fontSize: 12, marginTop: 2 }}>{p.email}</Text>
+                    {p.telefono ? (
+                      <Text style={{ color: colores.textoMuted, fontSize: 11, marginTop: 1 }}>
+                        📞 {p.telefono}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
-                <Text style={{ color: colores.textoSecundario, fontSize: 12, marginTop: 2 }}>{p.email}</Text>
-                {p.telefono ? (
-                  <Text style={{ color: colores.textoMuted, fontSize: 11, marginTop: 1 }}>
-                    📞 {p.telefono}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
+              );
+            })}
         </View>
       )}
 
@@ -1174,28 +1226,59 @@ export default function PantallaAdmin() {
       <Modal visible={modalPersonalVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={[styles.modalCuerpo, { backgroundColor: colores.tarjeta }]}>
-            <Text style={[styles.modalTitulo, { color: colores.texto }]}>Alta de Personal Municipal</Text>
+            <Text style={[styles.modalTitulo, { color: colores.texto }]}>Alta de Nuevo Usuario / Personal</Text>
+            <Text style={{ fontSize: 12, color: colores.textoSecundario, marginBottom: 12 }}>
+              Como Administrador autenticado, tenés facultades para generar nuevos administradores, encargados y jugadores.
+            </Text>
 
             <Text style={[styles.label, { color: colores.texto }]}>Rol a Asignar:</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
               <TouchableOpacity
                 style={[
                   styles.chipRolModal,
-                  personalRol === 'encargado' && styles.chipRolModalActivo,
-                  { borderColor: colores.borde },
+                  {
+                    flex: 1,
+                    backgroundColor: personalRol === 'administrador' ? '#D97706' : colores.tarjeta,
+                    borderColor: personalRol === 'administrador' ? '#D97706' : colores.borde,
+                  },
                 ]}
-                onPress={() => setPersonalRol('encargado')}
+                onPress={() => setPersonalRol('administrador')}
               >
                 <Icono
-                  nombre="shield-outline"
-                  size={16}
-                  color={personalRol === 'encargado' ? '#FFFFFF' : colores.texto}
+                  nombre="shield-checkmark"
+                  size={15}
+                  color={personalRol === 'administrador' ? '#FFFFFF' : '#D97706'}
                 />
                 <Text
                   style={[
                     styles.chipRolModalTexto,
-                    personalRol === 'encargado' && styles.chipRolModalTextoActivo,
-                    { color: personalRol === 'encargado' ? '#FFFFFF' : colores.texto },
+                    { color: personalRol === 'administrador' ? '#FFFFFF' : colores.texto, fontSize: 11 },
+                  ]}
+                >
+                  Admin
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.chipRolModal,
+                  {
+                    flex: 1,
+                    backgroundColor: personalRol === 'encargado' ? Colores.secundario : colores.tarjeta,
+                    borderColor: personalRol === 'encargado' ? Colores.secundario : colores.borde,
+                  },
+                ]}
+                onPress={() => setPersonalRol('encargado')}
+              >
+                <Icono
+                  nombre="id-card"
+                  size={15}
+                  color={personalRol === 'encargado' ? '#FFFFFF' : Colores.secundario}
+                />
+                <Text
+                  style={[
+                    styles.chipRolModalTexto,
+                    { color: personalRol === 'encargado' ? '#FFFFFF' : colores.texto, fontSize: 11 },
                   ]}
                 >
                   Encargado
@@ -1205,24 +1288,26 @@ export default function PantallaAdmin() {
               <TouchableOpacity
                 style={[
                   styles.chipRolModal,
-                  personalRol === 'administrador' && styles.chipRolModalActivo,
-                  { borderColor: colores.borde },
+                  {
+                    flex: 1,
+                    backgroundColor: personalRol === 'jugador' ? Colores.primarioClaro : colores.tarjeta,
+                    borderColor: personalRol === 'jugador' ? Colores.primarioClaro : colores.borde,
+                  },
                 ]}
-                onPress={() => setPersonalRol('administrador')}
+                onPress={() => setPersonalRol('jugador')}
               >
                 <Icono
-                  nombre="key-outline"
-                  size={16}
-                  color={personalRol === 'administrador' ? '#FFFFFF' : colores.texto}
+                  nombre="football-outline"
+                  size={15}
+                  color={personalRol === 'jugador' ? '#FFFFFF' : Colores.primarioClaro}
                 />
                 <Text
                   style={[
                     styles.chipRolModalTexto,
-                    personalRol === 'administrador' && styles.chipRolModalTextoActivo,
-                    { color: personalRol === 'administrador' ? '#FFFFFF' : colores.texto },
+                    { color: personalRol === 'jugador' ? '#FFFFFF' : colores.texto, fontSize: 11 },
                   ]}
                 >
-                  Administrador
+                  Jugador
                 </Text>
               </TouchableOpacity>
             </View>

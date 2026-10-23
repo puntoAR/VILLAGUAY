@@ -51,6 +51,7 @@ export default function PantallaLogin() {
   const [passwordReg, setPasswordReg] = useState<string>('');
   const [passwordConfirmReg, setPasswordConfirmReg] = useState<string>('');
   const [verPasswordReg, setVerPasswordReg] = useState<boolean>(false);
+  const [rolReg, setRolReg] = useState<Rol>('jugador');
   const [cargandoReg, setCargandoReg] = useState<boolean>(false);
 
   // Navegación segura hacia el sistema principal
@@ -112,7 +113,7 @@ export default function PantallaLogin() {
       email: emailReg.trim(),
       telefono: telefonoReg.trim(),
       password: passwordReg,
-      rol: 'jugador',
+      rol: rolReg,
     });
     setCargandoReg(false);
 
@@ -123,10 +124,11 @@ export default function PantallaLogin() {
     }
 
     await Haptica.confirmacion();
+    const tituloRol = rolReg === 'encargado' ? 'Encargado de Predio' : 'Jugador';
     Alert.alert(
       '¡Bienvenido a Deportes Villaguay! 🏆',
-      'Tu cuenta de jugador fue creada exitosamente. Ya podés reservar tus canchas favoritas.',
-      [{ text: 'Comenzar a reservar', onPress: navegarAlSistema }]
+      `Tu cuenta como ${tituloRol.toUpperCase()} fue creada exitosamente. Ya podés acceder a todas las funciones del sistema.`,
+      [{ text: 'Comenzar a usar el sistema', onPress: navegarAlSistema }]
     );
   };
 
@@ -535,18 +537,111 @@ export default function PantallaLogin() {
               </View>
             </View>
 
-            {/* Información de Tipo de Cuenta */}
-            <View style={[styles.tarjetaRolRegistro, { backgroundColor: colores.tarjeta, borderColor: colores.borde, borderWidth: 1, marginVertical: 6 }]}>
-              <View style={[styles.iconoRolContenedor, { backgroundColor: Colores.primarioClaro + '20' }]}>
-                <Icono nombre="football-outline" size={20} color={Colores.primarioClaro} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.tituloRolRegistro, { color: colores.texto }]}>
-                  Cuenta de Jugador / Vecino
-                </Text>
-                <Text style={[styles.descRolRegistro, { color: colores.textoSecundario }]}>
-                  Podrás consultar disponibilidad, reservar canchas municipales y presentar tu código QR en puerta. (El personal de predio y directores son dados de alta por la Dirección de Deportes).
-                </Text>
+            {/* Selector de Perfil / Rol en Registro */}
+            <View style={styles.grupoCampo}>
+              <Text style={[styles.etiquetaCampo, { color: colores.texto }]}>
+                Tipo de Cuenta / Rol en el Sistema
+              </Text>
+              <Text style={[styles.subtextoCampo, { color: colores.textoSecundario }]}>
+                Seleccioná el perfil con el que vas a operar en la aplicación:
+              </Text>
+              <View style={styles.contenedorSelectorRoles}>
+                {/* 1. Opción Jugador / Vecino */}
+                <TouchableOpacity
+                  style={[
+                    styles.tarjetaRolRegistro,
+                    {
+                      backgroundColor: colores.tarjeta,
+                      borderColor: rolReg === 'jugador' ? Colores.primarioClaro : colores.borde,
+                      borderWidth: rolReg === 'jugador' ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => setRolReg('jugador')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.iconoRolContenedor, { backgroundColor: Colores.primarioClaro + '20' }]}>
+                    <Icono nombre="football-outline" size={20} color={Colores.primarioClaro} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.tituloRolRegistro, { color: colores.texto }]}>
+                      Jugador / Vecino
+                    </Text>
+                    <Text style={[styles.descRolRegistro, { color: colores.textoSecundario }]}>
+                      Reserva turnos de canchas, consulta disponibilidad y genera su código QR de acceso.
+                    </Text>
+                  </View>
+                  {rolReg === 'jugador' && (
+                    <Icono nombre="checkmark-circle" size={20} color={Colores.primarioClaro} />
+                  )}
+                </TouchableOpacity>
+
+                {/* 2. Opción Encargado de Predio */}
+                <TouchableOpacity
+                  style={[
+                    styles.tarjetaRolRegistro,
+                    {
+                      backgroundColor: colores.tarjeta,
+                      borderColor: rolReg === 'encargado' ? Colores.secundario : colores.borde,
+                      borderWidth: rolReg === 'encargado' ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => setRolReg('encargado')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.iconoRolContenedor, { backgroundColor: Colores.secundario + '20' }]}>
+                    <Icono nombre="shield-checkmark-outline" size={20} color={Colores.secundario} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.tituloRolRegistro, { color: colores.texto }]}>
+                      Encargado de Predio
+                    </Text>
+                    <Text style={[styles.descRolRegistro, { color: colores.textoSecundario }]}>
+                      Control de ingresos con escáner QR y huella dactilar, cobros en puerta y suspensiones por lluvia.
+                    </Text>
+                  </View>
+                  {rolReg === 'encargado' && (
+                    <Icono nombre="checkmark-circle" size={20} color={Colores.secundario} />
+                  )}
+                </TouchableOpacity>
+
+                {/* 3. Opción Administrador (BLOQUEADO: Solo por otro Administrador) */}
+                <TouchableOpacity
+                  style={[
+                    styles.tarjetaRolRegistro,
+                    {
+                      backgroundColor: colores.tarjeta,
+                      borderColor: colores.borde,
+                      borderWidth: 1,
+                      opacity: 0.75,
+                    },
+                  ]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Rol Institucional Protegido 🔒',
+                      'Por normativa de seguridad de la Dirección de Deportes, el rol de Administrador no puede crearse por autoregistro público.\n\nSolo un Administrador existente (ej: María Agostina García) puede dar de alta nuevos administradores desde el panel directivo institucional.'
+                    );
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.iconoRolContenedor, { backgroundColor: 'rgba(100, 116, 139, 0.15)' }]}>
+                    <Icono nombre="lock-closed-outline" size={20} color={colores.textoMuted} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[styles.tituloRolRegistro, { color: colores.texto }]}>
+                        Dirección de Deportes (Administrador)
+                      </Text>
+                      <View style={{ backgroundColor: 'rgba(217, 119, 6, 0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#D97706' }}>
+                          🔒 SOLO POR OTRO ADMIN
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.descRolRegistro, { color: colores.textoSecundario }]}>
+                      Solo puede ser generado por otro Administrador desde el panel institucional.
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
 

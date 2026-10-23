@@ -210,9 +210,18 @@ export const AuthServicio = {
       }
 
       const id = `usr-${Date.now().toString().slice(-4)}`;
-      // Los usuarios en general SOLO pueden registrarse como jugador.
-      // El alta de personal (encargados y directores) la realiza exclusivamente el Director de Deportes.
-      const rolAsignado: Rol = 'jugador';
+      const rolSolicitado = datos.rol || 'jugador';
+
+      // REGLA DE SEGURIDAD INSTITUCIONAL:
+      // El rol de administrador SOLO puede ser generado por otro administrador desde el panel directivo.
+      if (rolSolicitado === 'administrador') {
+        return crearError(
+          'ACCESO_DENEGADO_ROL',
+          'El rol de Administrador no puede crearse por autoregistro público. Solo un Administrador existente puede generar nuevos Administradores desde el panel institucional de Dirección de Deportes.'
+        );
+      }
+
+      const rolAsignado: Rol = rolSolicitado === 'encargado' ? 'encargado' : 'jugador';
       const nuevoUsuario: Usuario = {
         id,
         nombre,
@@ -343,18 +352,60 @@ export const AuthServicio = {
     }
   },
 
-  // Crear un nuevo usuario de personal sin cambiar la sesión del administrador actual
-  async crearUsuarioPersonal(
-    datos: DatosRegistro
+  // Obtener la totalidad de usuarios registrados (jugadores, encargados y administradores)
+  async obtenerTodosLosUsuarios(): Promise<Usuario[]> {
+    try {
+      const db = await obtenerBD();
+      const usuariosBD = await db.getAllAsync<any>('SELECT * FROM usuarios ORDER BY nombre ASC');
+
+      const listaMap = new Map<string, Usuario>();
+      USUARIOS_MOCK.forEach(u => listaMap.set(u.id, u));
+
+      if (usuariosBD) {
+        usuariosBD.forEach(u => {
+          listaMap.set(u.id, {
+            id: u.id,
+            nombre: u.nombre,
+            email: u.email,
+            telefono: u.telefono,
+            rol: u.rol,
+            espaciosFavoritos: JSON.parse(u.espaciosFavoritos || '[]'),
+            cancelacionesTardias: u.cancelacionesTardias || 0,
+            ausencias: u.ausencias || 0,
+            password: u.password,
+          });
+        });
+      }
+
+      return Array.from(listaMap.values());
+    } catch {
+      return USUARIOS_MOCK;
+    }
+  },
+
+  // Crear un nuevo usuario por parte del Administrador (permite generar cualquier rol: jugador, encargado o administrador)
+  async crearUsuarioPorAdmin(
+    datos: DatosRegistro,
+    rolCreador?: Rol
   ): Promise<RespuestaExito<Usuario> | RespuestaError> {
+    const rolAsignar = datos.rol || 'encargado';
+
+    // REGLA FUNDAMENTAL DE SEGURIDAD:
+    // El rol de administrador solo puede ser generado por otro administrador.
+    if (rolAsignar === 'administrador' && rolCreador !== 'administrador') {
+      return crearError(
+        'ACCESO_DENEGADO_ADMIN',
+        'Operación denegada: El rol de Administrador únicamente puede ser generado por otro Administrador autenticado.'
+      );
+    }
+
     const nombre = datos.nombre.trim();
     const email = datos.email.trim().toLowerCase();
     const telefono = datos.telefono.trim();
     const password = datos.password?.trim() || '123456';
-    const rol = datos.rol || 'encargado';
 
     if (!nombre || nombre.length < 3) {
-      return crearError('NOMBRE_INVALIDO', 'Ingresá el nombre y apellido completo del personal.');
+      return crearError('NOMBRE_INVALIDO', 'Ingresá el nombre y apellido completo del nuevo usuario.');
     }
 
     if (!email || !email.includes('@')) {
@@ -387,7 +438,7 @@ export const AuthServicio = {
         nombre,
         email,
         telefono,
-        rol,
+        rol: rolAsignar,
         espaciosFavoritos: [],
         cancelacionesTardias: 0,
         ausencias: 0,
@@ -412,7 +463,14 @@ export const AuthServicio = {
       USUARIOS_MOCK.push(nuevoUsuario);
       return crearExito(nuevoUsuario);
     } catch {
-      return crearError('ERROR_CREAR_PERSONAL', 'No se pudo guardar el nuevo usuario en el sistema.');
+      return crearError('ERROR_CREAR_USUARIO', 'No se pudo guardar el nuevo usuario en el sistema.');
     }
+  },
+
+  // Mantener compatibilidad previa
+  async crearUsuarioPersonal(
+    datos: DatosRegistro
+  ): Promise<RespuestaExito<Usuario> | RespuestaError> {
+    return this.crearUsuarioPorAdmin(datos, 'administrador');
   },
 };

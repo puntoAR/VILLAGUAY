@@ -11,6 +11,7 @@ interface AuthContextType {
   soportaBiometria: boolean;
   iniciarSesion: (email: string, password?: string) => Promise<{ exito: boolean; mensajeError?: string }>;
   registrar: (datos: DatosRegistro) => Promise<{ exito: boolean; mensajeError?: string }>;
+  crearUsuarioPorAdmin: (datos: DatosRegistro) => Promise<{ exito: boolean; usuario?: Usuario; mensajeError?: string }>;
   cerrarSesion: () => Promise<void>;
   reingresoBiometrico: () => Promise<boolean>;
   cambiarRolDemo: (rol: Rol) => Promise<void>;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   soportaBiometria: false,
   iniciarSesion: async () => ({ exito: false }),
   registrar: async () => ({ exito: false }),
+  crearUsuarioPorAdmin: async () => ({ exito: false }),
   cerrarSesion: async () => {},
   reingresoBiometrico: async () => false,
   cambiarRolDemo: async () => {},
@@ -78,6 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUsuario(respuesta.datos.usuario);
     return { exito: true };
+  };
+
+  const crearUsuarioPorAdmin = async (
+    datos: DatosRegistro
+  ): Promise<{ exito: boolean; usuario?: Usuario; mensajeError?: string }> => {
+    const respuesta = await AuthServicio.crearUsuarioPorAdmin(datos, usuario?.rol);
+    if (esError(respuesta)) {
+      return { exito: false, mensajeError: respuesta.error.mensaje };
+    }
+    return { exito: true, usuario: respuesta.datos };
   };
 
   const cerrarSesion = async () => {
@@ -142,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         soportaBiometria,
         iniciarSesion,
         registrar,
+        crearUsuarioPorAdmin,
         cerrarSesion,
         reingresoBiometrico,
         cambiarRolDemo,
