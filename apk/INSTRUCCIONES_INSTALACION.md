@@ -14,7 +14,7 @@ Conforme a las consignas de la cátedra, esta sección contiene los enlaces dire
 
 | Elemento Requerido | Enlace Oficial / Detalle |
 | :--- | :--- |
-| **Link del Build (APK Release)** | [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk) |
+| **Link del Build (APK Release)** | [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/ohV6mF15l71kRG6hbrDax2ouafIJFK21xmGVzosIwaw.apk) |
 | **Dashboard del Build en EAS** | [Ver Build en Expo Cloud](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/563cb6d0-ef06-4501-8dc9-741142505152) |
 | **Código Fuente (GitLab)** | [https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay](https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay) |
 | **ID de Proyecto EAS** | `5e0aed43-a9ec-47c3-8351-9ed9214e6b6b` |
@@ -30,7 +30,7 @@ El archivo `.apk` generado es completamente **autónomo**: no requiere tener la 
 ### Paso a paso:
 1. **Descargar el instalador:**
    * Abrí en el navegador de tu celular el siguiente enlace:
-     👉 **[https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)**
+     👉 **[https://expo.dev/artifacts/eas/ohV6mF15l71kRG6hbrDax2ouafIJFK21xmGVzosIwaw.apk](https://expo.dev/artifacts/eas/ohV6mF15l71kRG6hbrDax2ouafIJFK21xmGVzosIwaw.apk)**
    * Esperá a que termine de descargarse el archivo `reservas-deportivas-villaguay.apk` (~132 MB).
 
 2. **Permitir instalación y aviso de Google Play Protect:**

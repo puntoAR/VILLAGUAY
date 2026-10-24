@@ -4,7 +4,7 @@
 Aplicación móvil desarrollada según los requerimientos del PRD de la Dirección de Deportes de la Municipalidad de Villaguay, Entre Ríos, estructurada estrictamente para cumplir y acreditar los contenidos de las **Unidades 3, 4, 5 y 6** de la cátedra.
 
 > 📦 **Entrega Oficial del APK de Release**:
-> - **Descarga Directa del APK**: [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)
+> - **Descarga Directa del APK**: [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/ohV6mF15l71kRG6hbrDax2ouafIJFK21xmGVzosIwaw.apk)
 > - **Dashboard de Build en Expo Cloud**: [Build #563cb6d0](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/563cb6d0-ef06-4501-8dc9-741142505152).
 > - **Instrucciones de Instalación**: Consultá [apk/INSTRUCCIONES_INSTALACION.md](./apk/INSTRUCCIONES_INSTALACION.md).
 > - 🧪 **Juego de Pruebas para Profesores**: Paso a paso de 7 escenarios clave en [GUIA_PRUEBAS_PROFESORES.md](./GUIA_PRUEBAS_PROFESORES.md).
