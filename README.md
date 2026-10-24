@@ -7,6 +7,7 @@ Aplicación móvil desarrollada según los requerimientos del PRD de la Direcci�
 > - **Descarga Directa del APK**: [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)
 > - **Dashboard de Build en Expo Cloud**: [Build #2eeab8c7](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/2eeab8c7-b570-4457-a018-ee0ba7ec411a).
 > - **Instrucciones de Instalación**: Consultá [apk/INSTRUCCIONES_INSTALACION.md](./apk/INSTRUCCIONES_INSTALACION.md).
+> - 🧪 **Juego de Pruebas para Profesores**: Paso a paso de 7 escenarios clave en [GUIA_PRUEBAS_PROFESORES.md](./GUIA_PRUEBAS_PROFESORES.md).
 > - 📖 **Simulador de Defensa Oral**: Consultá las 25 preguntas y respuestas modelo en [PREGUNTAS_DEFENSA_ORAL.md](./PREGUNTAS_DEFENSA_ORAL.md).
 
 ---
@@ -32,13 +33,13 @@ Aplicación móvil desarrollada según los requerimientos del PRD de la Direcci�
 
 ### Unidad 5: Redes y Persistencia de Datos
 - **Consumo de API de la Cátedra**: Cliente HTTP centralizado en `src/servicios/api.ts` con URL base, inyección de token Bearer y cancelación de peticiones con `AbortController`.
-- **TanStack Query (React Query)**:
-  - `useQuery` para consulta de espacios y turnos con caché automática y tiempos de obsolescencia (`staleTime`).
-  - `useMutation` para creación y cancelación de turnos con invalidación de caché (`queryClient.invalidateQueries`).
+- **Gestión de Estado de Red Reactivo (React 19)**:
+  - Hooks puros y optimizados (`useCallback`, `useFocusEffect`, `useState`) para refresco automático de turnos al enfocar pestañas sin desincronización de caché.
+  - Cancelación de peticiones en vuelo con `AbortSignal` y resiliencia offline ante fallos de conexión.
 - **Detección de Red (`expo-network`)**: Componente `BannerDesconexion.tsx` que advierte visualmente cuando se pierde la conexión a internet.
 - **Persistencia Local Dual**:
   - `AsyncStorage` (`@react-native-async-storage/async-storage`): Clave-valor para preferencias livianas (modo claro/oscuro persistido).
-  - `SQLite` (`expo-sqlite`): **API sincrónica estricta** con `SQLite.openDatabaseSync()`, `execSync()`, `runSync()`, `getAllSync()`, `getFirstSync()` y transacciones atómicas con `withTransactionSync()`.
+  - `SQLite` (`expo-sqlite`): Base de datos relacional local con tablas relacionales (`deportes`, `espacios`, `reservas`, `reservas_fijas`, `bloqueos`, `usuarios`), consultas por filtros y soporte offline completo con fallback web en `localStorage`.
 
 ### Unidad 6: Seguridad, Computación Ubicua e IoT
 - **Almacenamiento Seguro (`expo-secure-store`)**: Resguardo cifrado de tokens JWT de sesión.
@@ -99,14 +100,13 @@ Cada integrante cuenta con un tiempo estimado de **3 a 4 minutos** para exponer 
   - Video nativo: `useVideoPlayer` y `VideoView` de `expo-video` para el recorrido de canchas.
   - Ubicación y mapas: `expo-location` (permisos en primer plano), marcadores de complejos en `react-native-maps` y fórmula de distancia euclídea en kilómetros.
 
-### 👤 Integrante 4: Redes, Consumo de API y TanStack Query (Unidad 5 - Parte 1)
+### 👤 Integrante 4: Redes, Consumo de API y Gestión de Estado (Unidad 5 - Parte 1)
 - **Archivos a cargo**: `src/servicios/api.ts`, `src/servicios/red.ts`, `src/componentes/BannerDesconexion.tsx`, `src/app/(tabs)/index.tsx`, `src/app/(tabs)/turnos.tsx`.
 - **Temas a defender**:
   - Cliente HTTP centralizado (`ClienteHttp`): URL base configurable, inyección de token Bearer en headers y cancelación de peticiones con `AbortController`.
   - Detección del estado de conectividad con `expo-network` y renderizado condicional de `BannerDesconexion.tsx`.
-  - Integración de **TanStack Query (React Query)**:
-    - `useQuery`: Consulta de canchas y turnos con tiempos de obsolescencia (`staleTime: 3 min`) y re-obtención automática en segundo plano.
-    - `useMutation`: Modificación para alta y cancelación de reservas, e invalidación de caché con `queryClient.invalidateQueries`.
+  - Arquitectura reactiva con hooks nativos (`useCallback`, `useFocusEffect`): revalidación inmediata al enfocar pestañas sin desincronizaciones de caché.
+  - Resiliencia y estrategia ante pérdida de conexión: fallback automático y sincronización con SQLite local.
 
 ### 👤 Integrante 5: Persistencia Local, Seguridad, IoT y Compilación EAS (Unidades 5, 6 y DevOps)
 - **Archivos a cargo**: `src/basedatos/sqlite.ts`, `src/basedatos/asyncstorage.ts`, `src/servicios/auth.ts`, `src/servicios/notificaciones.ts`, `app.json`, `eas.json`.
