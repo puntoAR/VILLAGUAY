@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Reserva, Espacio } from '../../src/tipos';
 import { ReservasServicio } from '../../src/servicios/reservas';
@@ -75,6 +76,33 @@ export default function PantallaMisReservas() {
   const handleCancelar = (reservaId: string) => {
     if (!usuario) return;
 
+    const ejecutarCancelacion = async () => {
+      const resp = await ReservasServicio.cancelarReserva(reservaId, usuario.id);
+      if (!esError(resp)) {
+        if (resp.datos.cancelacionTardia) {
+          Alert.alert(
+            'Cancelación tardía registrada',
+            'Se canceló el turno pero quedó registrada una cancelación tardía (a menos de 4 horas del turno).'
+          );
+        } else {
+          Alert.alert('Reserva cancelada', 'Tu turno fue cancelado correctamente sin penalización.');
+        }
+        cargarReservas();
+      } else {
+        Alert.alert('Error', resp.error.mensaje);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined'
+        ? window.confirm('¿Estás seguro de cancelar este turno? Si faltan menos de 4 horas para el inicio, se computará como cancelación tardía.')
+        : true;
+      if (ok) {
+        ejecutarCancelacion();
+      }
+      return;
+    }
+
     Alert.alert(
       'Cancelar Reserva',
       '¿Estás seguro de cancelar este turno? Si faltan menos de 4 horas para el inicio, se computará como cancelación tardía.',
@@ -83,22 +111,7 @@ export default function PantallaMisReservas() {
         {
           text: 'Sí, cancelar turno',
           style: 'destructive',
-          onPress: async () => {
-            const resp = await ReservasServicio.cancelarReserva(reservaId, usuario.id);
-            if (!esError(resp)) {
-              if (resp.datos.cancelacionTardia) {
-                Alert.alert(
-                  'Cancelación tardía registrada',
-                  'Se canceló el turno pero quedó registrada una cancelación tardía (a menos de 4 horas del turno).'
-                );
-              } else {
-                Alert.alert('Reserva cancelada', 'Tu turno fue cancelado correctamente sin penalización.');
-              }
-              cargarReservas();
-            } else {
-              Alert.alert('Error', resp.error.mensaje);
-            }
-          },
+          onPress: ejecutarCancelacion,
         },
       ]
     );

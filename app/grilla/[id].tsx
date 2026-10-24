@@ -8,6 +8,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTema } from '../../src/contexto/ThemeContext';
@@ -96,6 +97,16 @@ export default function PantallaGrilla() {
   const abrirModalReserva = (turno: Turno) => {
     // Si no está registrado, se le pide cuenta recién al querer reservar
     if (!usuario) {
+      if (Platform.OS === 'web') {
+        const ok = typeof window !== 'undefined'
+          ? window.confirm('Podés consultar la disponibilidad sin cuenta, pero para reservar un turno tenés que iniciar sesión o registrarte.\n\n¿Deseás ir a iniciar sesión / registrarte ahora?')
+          : false;
+        if (ok) {
+          router.push('/login');
+        }
+        return;
+      }
+
       Alert.alert(
         'Iniciar Sesión',
         'Podés consultar la disponibilidad sin cuenta, pero para reservar un turno tenés que iniciar sesión o registrarte.',
@@ -153,6 +164,18 @@ export default function PantallaGrilla() {
 
     setMostrarModal(false);
     const reservaCreada = resultado.datos;
+
+    if (Platform.OS === 'web') {
+      const ver = typeof window !== 'undefined'
+        ? window.confirm(`¡Turno Reservado!\nTu turno para ${espacio.nombre} a las ${turnoSeleccionado.inicio} hs fue confirmado.\n\n¿Deseás ver tu comprobante y código QR ahora?`)
+        : false;
+      if (ver) {
+        router.replace(`/reserva/${reservaCreada.id}` as any);
+      } else {
+        cargarTurnos();
+      }
+      return;
+    }
 
     Alert.alert(
       '¡Turno Reservado!',
@@ -555,15 +578,26 @@ const styles = StyleSheet.create({
   modalFondo: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: 'center',
+    padding: Platform.OS === 'web' ? 20 : 0,
   },
   modalContenido: {
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: Platform.OS === 'web' ? 20 : 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderWidth: Platform.OS === 'web' ? 1 : 0,
     paddingHorizontal: 20,
-    paddingBottom: 36,
-    paddingTop: 12,
-    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'web' ? 24 : 36,
+    paddingTop: 16,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: Platform.OS === 'web' ? 8 : -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalBarraTop: {
     width: 40,

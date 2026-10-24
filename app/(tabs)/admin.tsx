@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import {
   Espacio,
@@ -1055,13 +1056,24 @@ const styles = StyleSheet.create({
   modalFondo: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: 'center',
+    padding: Platform.OS === 'web' ? 20 : 0,
   },
   modalContenido: {
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: Platform.OS === 'web' ? 20 : 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: Platform.OS === 'web' ? 1 : 0,
     padding: 20,
     maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: Platform.OS === 'web' ? 8 : -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalTitulo: {
     fontSize: 18,

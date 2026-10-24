@@ -16,6 +16,14 @@ export const EspacioCard: React.FC<Props> = ({ espacio }) => {
   const { usuario, alternarFavorito } = useAuth();
   const router = useRouter();
 
+  const nombresDeportes: Record<string, string> = {
+    'dep-futbol5': 'Fútbol 5',
+    'dep-futbol11': 'Fútbol 11',
+    'dep-basquet': 'Básquet',
+    'dep-voley': 'Vóley',
+    'dep-tenis': 'Tenis',
+  };
+  const nombreDeporte = nombresDeportes[espacio.deporteId] || 'Deporte';
   const esFavorito = usuario?.espaciosFavoritos?.includes(espacio.id) || false;
 
   return (
@@ -63,6 +71,12 @@ export const EspacioCard: React.FC<Props> = ({ espacio }) => {
         </Text>
 
         <View style={styles.chipsContenedor}>
+          <View style={[styles.chip, { backgroundColor: Colores.primarioClaro + '18' }]}>
+            <Text style={[styles.chipTexto, { color: Colores.primarioClaro, fontWeight: '700' }]}>
+              {nombreDeporte}
+            </Text>
+          </View>
+
           <View style={[styles.chip, { backgroundColor: colores.libre }]}>
             <Text style={[styles.chipTexto, { color: colores.libreTexto }]}>{espacio.superficie}</Text>
           </View>

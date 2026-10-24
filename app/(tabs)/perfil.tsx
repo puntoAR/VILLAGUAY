@@ -7,6 +7,7 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../../src/contexto/AuthContext';
 import { useTema } from '../../src/contexto/ThemeContext';
@@ -21,6 +22,15 @@ export default function PantallaPerfil() {
   const router = useRouter();
 
   const handleCerrarSesion = async () => {
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm('¿Deseás salir de tu cuenta?') : true;
+      if (ok) {
+        await cerrarSesion();
+        router.replace('/login');
+      }
+      return;
+    }
+
     Alert.alert('Cerrar Sesión', '¿Deseas salir de tu cuenta?', [
       { text: 'Cancelar', style: 'cancel' },
       {

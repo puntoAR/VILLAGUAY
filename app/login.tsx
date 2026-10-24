@@ -177,7 +177,7 @@ export default function PantallaLogin() {
         );
   };
 
-  // Selector rápido de demostración oral para la mesa de examen
+  // Selector rápido de perfiles de prueba
   const seleccionarUsuarioDemo = async (u: Usuario) => {
     await Haptica.seleccionSuave();
     await authSeleccionarDemo(u);
@@ -685,6 +685,9 @@ const styles = StyleSheet.create({
   contenido: {
     padding: 20,
     paddingBottom: 40,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   encabezado: {
     alignItems: 'center',

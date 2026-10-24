@@ -84,27 +84,47 @@ export default function PantallaDetalleReserva() {
       ? 'Faltan menos de 4 horas para el inicio del turno. Esta acción quedará registrada como CANCELACIÓN TARDÍA en tu legajo deportivo municipal. ¿Confirmás la cancelación?'
       : '¿Estás seguro de que deseas cancelar este turno? Se liberará inmediatamente para otros deportistas.';
 
+    const ejecutarCancelacion = async () => {
+      const resp = await ReservasServicio.cancelarReserva(reserva.id, usuario.id);
+      if (esError(resp)) {
+        Alert.alert('Error', resp.error.mensaje);
+        return;
+      }
+
+      await Haptica.seleccionSuave();
+      if (Platform.OS === 'web') {
+        alert(
+          resp.datos.cancelacionTardia
+            ? 'El turno fue cancelado y se registró la penalización por cancelación tardía.'
+            : 'El turno fue cancelado correctamente sin penalizaciones.'
+        );
+        router.replace('/(tabs)/mis-reservas' as any);
+        return;
+      }
+
+      Alert.alert(
+        'Turno cancelado',
+        resp.datos.cancelacionTardia
+          ? 'El turno fue cancelado y se registró la penalización por cancelación tardía.'
+          : 'El turno fue cancelado correctamente sin penalizaciones.',
+        [{ text: 'Entendido', onPress: () => router.replace('/(tabs)/mis-reservas' as any) }]
+      );
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm(`Confirmar Cancelación:\n\n${mensajeAdvertencia}`) : true;
+      if (ok) {
+        ejecutarCancelacion();
+      }
+      return;
+    }
+
     Alert.alert('Confirmar Cancelación', mensajeAdvertencia, [
       { text: 'No, mantener turno', style: 'cancel' },
       {
         text: 'Sí, cancelar turno',
         style: 'destructive',
-        onPress: async () => {
-          const resp = await ReservasServicio.cancelarReserva(reserva.id, usuario.id);
-          if (esError(resp)) {
-            Alert.alert('Error', resp.error.mensaje);
-            return;
-          }
-
-          await Haptica.seleccionSuave();
-          Alert.alert(
-            'Turno cancelado',
-            resp.datos.cancelacionTardia
-              ? 'El turno fue cancelado y se registró la penalización por cancelación tardía.'
-              : 'El turno fue cancelado correctamente sin penalizaciones.',
-            [{ text: 'Entendido', onPress: () => router.replace('/mis-reservas' as any) }]
-          );
-        },
+        onPress: ejecutarCancelacion,
       },
     ]);
   };
