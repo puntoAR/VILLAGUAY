@@ -5,7 +5,7 @@ Aplicación móvil desarrollada según los requerimientos del PRD de la Direcci�
 
 > 📦 **Entrega Oficial del APK de Release**:
 > - **Descarga Directa del APK**: [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk)
-> - **Dashboard de Build en Expo Cloud**: [Build #2eeab8c7](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/2eeab8c7-b570-4457-a018-ee0ba7ec411a).
+> - **Dashboard de Build en Expo Cloud**: [Build #563cb6d0](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/563cb6d0-ef06-4501-8dc9-741142505152).
 > - **Instrucciones de Instalación**: Consultá [apk/INSTRUCCIONES_INSTALACION.md](./apk/INSTRUCCIONES_INSTALACION.md).
 > - 🧪 **Juego de Pruebas para Profesores**: Paso a paso de 7 escenarios clave en [GUIA_PRUEBAS_PROFESORES.md](./GUIA_PRUEBAS_PROFESORES.md).
 > - 📖 **Simulador de Defensa Oral**: Consultá las 25 preguntas y respuestas modelo en [PREGUNTAS_DEFENSA_ORAL.md](./PREGUNTAS_DEFENSA_ORAL.md).

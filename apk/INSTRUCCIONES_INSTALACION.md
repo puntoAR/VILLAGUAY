@@ -15,7 +15,7 @@ Conforme a las consignas de la cátedra, esta sección contiene los enlaces dire
 | Elemento Requerido | Enlace Oficial / Detalle |
 | :--- | :--- |
 | **Link del Build (APK Release)** | [Descargar APK Oficial (Expo EAS)](https://expo.dev/artifacts/eas/wDtn76Iql9-oYq6JMugSnL9bEBaUDYLwd3lZjgrpSCQ.apk) |
-| **Dashboard del Build en EAS** | [Ver Build en Expo Cloud](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/2eeab8c7-b570-4457-a018-ee0ba7ec411a) |
+| **Dashboard del Build en EAS** | [Ver Build en Expo Cloud](https://expo.dev/accounts/jgroman/projects/reservas-deportivas-villaguay/builds/563cb6d0-ef06-4501-8dc9-741142505152) |
 | **Código Fuente (GitLab)** | [https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay](https://gitlab.com/unerdesarrolloweb2025/reservas-deportivas-villaguay) |
 | **ID de Proyecto EAS** | `5e0aed43-a9ec-47c3-8351-9ed9214e6b6b` |
 | **Identificador de Paquete** | `ar.gob.villaguay.reservasdeportivas` |
